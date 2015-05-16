@@ -4,20 +4,10 @@
 <script src="svg.import.js" type="text/javascript" charset="utf-8"></script>
 <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
 <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
-<div id='indonesia' style='width: 100%; height: 500px;'></div>
+<div id='indonesia' style='width: 2650px; height: 1280px;'></div>
 <script>
   var s = {}
   var map  = SVG('indonesia');
-
-  function dropLayers(s){
-    s.get("layer5").remove();
-    s.get("layer2").remove();
-    s.get("layer4").remove();
-    s.get("layer6").remove();
-    s.get("layer1").remove();
-    s.get("layer8").remove();
-    return s;
-  }
 
   function getParts(s, name, upper){
     return R.reduce(function(list, n){
@@ -36,7 +26,7 @@
   }
 
   function getOcean(s){
-    return getParts(s, "ocean", 20);
+    return getParts(s, "ocean", 21);
   }
 
   var svg = $.ajax({url: 'indonesia.svg', dataType: 'text'}).then(function(text){
@@ -50,9 +40,30 @@
     }
   }
 
+  function doto(fn){
+    return function (){
+      return this.each ? this.each(fn) : fn.call(this);
+    }
+  }
+
+  function addHover(color, items){
+    return R.forEach(function(item){
+      item.on('mouseover', doto(function(){
+      var fill = this.style('fill');
+      this.data('fill', fill);
+      this.style({fill: color});
+    })).on('mouseout', doto(function(){
+      this.style({fill: this.data('fill')});
+    }));
+    }, items);
+  }
+
   svg.then(mount("svg"));
-  //svg.then(dropLayers);
-  svg.then(getRegions(["aceh","sumatera-utara","rian", "sumatera-barat", "sumatera-selatan", "benakulu", "lampung", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])).then(mount('regions'));
-  svg.then(getOcean).then(mount("ocean"));
+  svg.then(getRegions(["aceh","sumatera-utara","rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])).then(mount('regions')).then(function(){
+    addHover('brown', R.flatten(R.values(s.regions)));
+  });
+  svg.then(getOcean).then(mount("ocean")).then(function(){
+    addHover('blue', s.ocean);
+  });
 
 </script>
