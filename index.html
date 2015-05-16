@@ -26,7 +26,7 @@
   }
 
   function getOcean(s){
-    return getParts(s, "ocean", 21);
+    return getParts(s, "ocean", 22);
   }
 
   var svg = $.ajax({url: 'indonesia.svg', dataType: 'text'}).then(function(text){
@@ -63,6 +63,10 @@
     addHover('brown', R.flatten(R.values(s.regions)));
   });
   svg.then(getOcean).then(mount("ocean")).then(function(){
+    R.forEach(function(item){
+      item.style({fill: 'lightblue'});
+    }, s.ocean);
+  }).then(function(){
     addHover('blue', s.ocean);
   });
 
