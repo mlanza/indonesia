@@ -4,7 +4,6 @@
 <script src="svg.import.js" type="text/javascript" charset="utf-8"></script>
 <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
 <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
-<div id='drawing' style='width: 100px; height: 100px; border: solid 1px black;'></div>
 <div id='indonesia' style='width: 100%; height: 500px;'></div>
 <script>
   var s = {}
@@ -40,7 +39,7 @@
     return getParts(s, "ocean", 20);
   }
 
-  var svg = $.ajax({url: 'map/indonesia.svg', dataType: 'text'}).then(function(text){
+  var svg = $.ajax({url: 'indonesia.svg', dataType: 'text'}).then(function(text){
     return map.svg(text);
   });
 
