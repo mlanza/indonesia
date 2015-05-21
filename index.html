@@ -2,6 +2,7 @@
 <script src="svg.topath.js" type="text/javascript" charset="utf-8"></script>
 <script src="svg.parser.js" type="text/javascript" charset="utf-8"></script>
 <script src="svg.import.js" type="text/javascript" charset="utf-8"></script>
+<script src="svg.easing.js" type="text/javascript" charset="utf-8"></script>
 <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
 <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
 <div id='indonesia' style='width: 2650px; height: 1280px;'></div>
@@ -11,7 +12,8 @@
 
   function getParts(s, name, upper){
     return R.reduce(function(list, n){
-      var part = s.get(name + '-' + n);
+      var piece = name + '-' + n;
+      var part = s.get(piece);
       return part ? list.concat([part]) : list;
     }, [], R.range(1, (upper || 10) + 1));
   }
@@ -46,28 +48,70 @@
     }
   }
 
-  function addHover(color, items){
-    return R.forEach(function(item){
+  function hoverHighlight(target, items){
+    R.forEach(function(item){
       item.on('mouseover', doto(function(){
-      var fill = this.style('fill');
-      this.data('fill', fill);
-      this.style({fill: color});
-    })).on('mouseout', doto(function(){
-      this.style({fill: this.data('fill')});
-    }));
+        var color = new SVG.Color(this.data('fill')).morph(target);
+        console.log('hover', this.attr('id'), this);
+        this.animate(500).fill(color.at(0.4).toHex());
+      })).on('mouseout', doto(function(){
+        this.animate(500).fill(this.data('fill'));
+      }));
     }, items);
   }
 
+  var bg = function(color){
+    return doto(function(){
+      this.fill(color);
+    });
+  }
+
+  var glow = doto(function(){
+    var mode = SVG.easing.quadInOut, time = 500;
+    function out(){
+      this.animate(time, mode).attr({fill: this.data('fill')});
+    }
+    this.animate(time, mode).fill('#FFFFE0').after(out);
+  });
+
+  var addGlow = R.forEach(function(item){
+    item.on('click', glow);
+  });
+
+  var styleToAttr = doto(function(){
+    var color = this.style("fill");
+    if (color !== "none") this.fill({color: color});
+    this.stroke({color: this.style("stroke"), width: this.style("stroke-width")});
+    this.attr("style", null);
+    this.data('fill', this.attr('fill'));
+  });
+
+  var offsets = {'aceh-1': [10, 10], 'aceh-2': [0, -20], 'aceh-3': [10, -20]};
+  var spices = [];
   svg.then(mount("svg"));
-  svg.then(getRegions(["aceh","sumatera-utara","rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])).then(mount('regions')).then(function(){
-    addHover('brown', R.flatten(R.values(s.regions)));
+  svg.then(getRegions(["aceh","sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])).then(mount('regions')).then(function(){
+    var spice = s.svg.get("spice");
+    var reg   = s.svg.get("layer7");
+    var tiles = s.svg.get("layer9");
+    tiles.hide();
+    var regions = R.flatten(R.values(s.regions));
+    R.forEach(function(item){
+      styleToAttr.call(item);
+      var size = 26;
+      var offset = offsets[item.attr('id')] || [0, 0];
+      reg.use(spice).translate(item.cx() - (size / 2) + offset[0] + -1330 , item.cy() - (size / 2) + offset[1] + -630);
+    }, regions);
+    hoverHighlight('#000', regions);
+    addGlow(regions);
   });
   svg.then(getOcean).then(mount("ocean")).then(function(){
     R.forEach(function(item){
-      item.style({fill: 'lightblue'});
+      item.fill("#AFEEEE");
+      styleToAttr.call(item);
     }, s.ocean);
+    addGlow(s.ocean);
   }).then(function(){
-    addHover('blue', s.ocean);
+    hoverHighlight('#FFF', s.ocean);
   });
 
 </script>
