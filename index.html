@@ -5,6 +5,11 @@
   <title>Indonesia</title>
   <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
   <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
+  <style>
+    svg .region:hover {
+      fill: red;
+    }
+  </style>
   <script>
 
     var s = (function(){
@@ -39,6 +44,7 @@
         bbox:   bbox,
         center: center,
         coord:  coord,
+        animate: tag('animate'),
         rect:   tag('rect'),
         circle: tag('circle'),
         use:    tag('use', {href: "http://www.w3.org/1999/xlink"})
@@ -49,7 +55,7 @@
       return R.reduce(function(list, n){
         var piece = '#' + name + '-' + n;
         var part = el.find(piece);
-        return part.length > 0 ? list.concat([part]) : list;
+        return part.length === 0 ? list : list.concat([part]);
       }, [], R.range(1, (upper || 10) + 1));
     }
 
@@ -84,6 +90,21 @@
       }
     }
 
+    function style(el){
+      return R.reduce(function(memo, assign){
+        if (!assign) return memo;
+        var pair = assign.split(":");
+        memo[pair[0].trim()] = pair[1].trim();
+        return memo;
+      }, {}, (el.attr("style") || "").split(";"));
+    }
+
+    function extractStyle(el){
+      var css = style(el);
+      el.attr("style", null);
+      return css;
+    }
+
     var regionNames = ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"];
     var goodsNames  = ["spice", "shipped-spice", "rice", "shipped-rice", "siap-faji", "shipped-siap-faji", "rubber", "shipped-rubber", "oil", "shipped-oil"];
 
@@ -96,7 +117,18 @@
         var tile = cycles(goodsNames);
         $.each(regions, function(name, region){
           $.each(region, function(idx, spot){
+            spot.attr(R.pick(['fill', 'stroke'], extractStyle(spot)));
             addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
+            var orig = spot.attr("fill"), other = "#bb625e", dim = "#333";
+            var over = s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseover', dur: "1s", from: orig, to: other}).appendTo(spot);
+            var out  = s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseout' , dur: ".5s", from: other, to: orig}).appendTo(spot);
+            spot.on("mouseover", function(){
+              console.log("mouseover", piece);
+            });
+            spot.on("click", R.once(function(){
+              over.attr("from", dim);
+              out.attr("to", dim);
+            }));
           });
         });
         $.extend(s, {board: board, layers: layers, regions: regions, goods: goods});
