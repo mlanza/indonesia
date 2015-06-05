@@ -413,6 +413,174 @@
          id="path9013"
          inkscape:connector-curvature="0" />
     </symbol>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8080"
+       id="radialGradient8086-5"
+       cx="145.71428"
+       cy="258.07648"
+       fx="145.71428"
+       fy="258.07648"
+       r="37.642857"
+       gradientTransform="matrix(0.30116781,0,0,0.46118106,-23.94285,-88.75263)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient8080">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="0"
+         id="stop8082" />
+      <stop
+         style="stop-color:#ffffff;stop-opacity:0;"
+         offset="1"
+         id="stop8084" />
+    </linearGradient>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8184"
+       id="radialGradient8190"
+       cx="502.85715"
+       cy="312.36218"
+       fx="502.85715"
+       fy="312.36218"
+       r="91.928574"
+       gradientTransform="matrix(-0.64889313,0.02855063,-0.05559869,-1.2636343,371.3534,415.35476)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient8184">
+      <stop
+         style="stop-color:#668000;stop-opacity:1;"
+         offset="0"
+         id="stop8186" />
+      <stop
+         style="stop-color:#668000;stop-opacity:0;"
+         offset="1"
+         id="stop8188" />
+    </linearGradient>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8080"
+       id="radialGradient8086-7"
+       cx="145.71428"
+       cy="258.07648"
+       fx="145.71428"
+       fy="258.07648"
+       r="37.642857"
+       gradientTransform="matrix(0.30116781,0,0,0.46118106,-23.94284,-88.75263)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8132"
+       id="radialGradient8138"
+       cx="365.71429"
+       cy="592.36218"
+       fx="365.71429"
+       fy="592.36218"
+       r="91.928574"
+       gradientTransform="matrix(-0.66171768,0.01281119,-0.02613456,-1.3498955,285.16666,829.94176)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient8132">
+      <stop
+         style="stop-color:#ffdd55;stop-opacity:1;"
+         offset="0"
+         id="stop8134" />
+      <stop
+         style="stop-color:#ffeb1b;stop-opacity:0.56466877"
+         offset="1"
+         id="stop8136" />
+    </linearGradient>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8080"
+       id="radialGradient8086"
+       cx="145.71428"
+       cy="258.07648"
+       fx="145.71428"
+       fy="258.07648"
+       r="37.642857"
+       gradientTransform="matrix(0.30116781,0,0,0.46118106,-23.94283,-88.75263)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8070"
+       id="radialGradient8076"
+       cx="202.81239"
+       cy="381.46216"
+       fx="202.81239"
+       fy="381.46216"
+       r="91.928574"
+       gradientTransform="matrix(-0.88098648,0.02922585,-0.05289072,-1.5943421,225.67626,635.71236)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient8070"
+       inkscape:collect="always">
+      <stop
+         id="stop8126"
+         offset="0"
+         style="stop-color:#ff0000;stop-opacity:1;" />
+      <stop
+         id="stop8128"
+         offset="1"
+         style="stop-color:#ff0000;stop-opacity:0;" />
+    </linearGradient>
+    <symbol
+       id="red-bead"
+       inkscape:label="#g28490">
+      <ellipse
+         ry="34.849415"
+         rx="27.535343"
+         cy="35"
+         cx="27.685926"
+         id="path7268"
+         style="fill:url(#radialGradient8076);fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.30116782px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <ellipse
+         ry="17.209587"
+         rx="11.186233"
+         cy="30.267336"
+         cx="19.941603"
+         id="path8078"
+         style="fill:url(#radialGradient8086);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </symbol>
+    <symbol
+       id="yellow-bead"
+       inkscape:label="#g28703">
+      <ellipse
+         ry="34.849415"
+         rx="27.535343"
+         cy="35"
+         cx="27.685928"
+         id="path7268-6"
+         style="fill:url(#radialGradient8138);fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.30116782px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <ellipse
+         ry="17.209587"
+         rx="11.186233"
+         cy="30.267336"
+         cx="19.941605"
+         id="path8078-9"
+         style="fill:url(#radialGradient8086-7);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </symbol>
+    <symbol
+       id="green-bead"
+       inkscape:label="#g28925">
+      <ellipse
+         ry="34.849415"
+         rx="27.535343"
+         cy="35"
+         cx="27.68593"
+         id="path7268-2"
+         style="fill:url(#radialGradient8190);fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.30116782px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <ellipse
+         ry="17.209587"
+         rx="11.186233"
+         cy="30.267336"
+         cx="19.941607"
+         id="path8078-5"
+         style="fill:url(#radialGradient8086-5);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </symbol>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -422,8 +590,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.1326072"
-     inkscape:cx="1384.3791"
-     inkscape:cy="300.17538"
+     inkscape:cx="-62.219717"
+     inkscape:cy="1465.628"
      inkscape:document-units="px"
      inkscape:current-layer="layer7"
      showgrid="false"
@@ -2891,7 +3059,7 @@
      inkscape:groupmode="layer"
      id="layer9"
      inkscape:label="Tiles"
-     style="display:inline">
+     style="display:none">
     <g
        id="g4961"
        style="fill:#ffffff">
