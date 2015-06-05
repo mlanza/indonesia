@@ -53,33 +53,53 @@
       }, [], R.range(1, (upper || 10) + 1));
     }
 
-    function getRegions(el, regions){
-      return R.reduce(function(dict, name){
-        dict[name] = getParts(el, name);
-        return dict;
-      }, {}, regions);
-    }
-
-    function addPiece(el, id){
+    function addPiece(el, href){
       var offset = 17.5;
       var c = s.center(el), x = c.x - offset, y = c.y - offset;
-      return use({x: x, y: y, href: '#' + id});
+      return use({x: x, y: y, href: href});
     }
+
+    function getElements(f, names){
+      return R.reduce(function(obj, name){
+        obj[name] = f(name);
+        return obj;
+      }, {}, names)
+    }
+
+    function piece(board){
+      return function(name){
+        return board.find("#" + name);
+      }
+    }
+
+    function pieces(board){
+      return function(name){
+        return getParts(board, name);
+      }
+    }
+
+    function cycles(list){
+      return function at(idx){
+        return list[idx] || at(idx - list.length);
+      }
+    }
+
+    var regionNames = ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"];
+    var goodsNames  = ["spice", "shipped-spice", "rice", "shipped-rice", "siap-faji", "shipped-siap-faji", "rubber", "shipped-rubber", "oil", "shipped-oil"];
 
     $(function(){
       $("#indonesia").load(function(){
         var board   = $(this.contentDocument);
-        var regions = board.find("#layer7");
-        var oceans  = board.find("#layer2").remove();
-        var arrows  = board.find("#layer5").remove();
-        var spice   = board.find("#spice");
-        var locations = getRegions(regions, ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])
-        $.each(locations, function(name, area){
-          $.each(area, function(idx, loc){
-            addPiece(loc, 'oil').appendTo(regions);
+        var layers  = {regions: board.find("#layer7"), oceans: board.find("#layer2").remove(), arrows: board.find("#layer5").remove()};
+        var goods   = getElements(piece(board) , goodsNames);
+        var regions = getElements(pieces(board), regionNames);
+        var tile = cycles(goodsNames);
+        $.each(regions, function(name, region){
+          $.each(region, function(idx, spot){
+            addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
           });
         });
-        $.extend(s, {board: board, regions: regions, locations: locations, spice: spice, respice: respice});
+        $.extend(s, {board: board, layers: layers, regions: regions, goods: goods});
       });
     });
 
