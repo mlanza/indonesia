@@ -74,10 +74,9 @@
         var arrows  = board.find("#layer5").remove();
         var spice   = board.find("#spice");
         var locations = getRegions(regions, ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])
-        var respice = use({href: '#spice', x: 0, y: 0}).appendTo(regions);
         $.each(locations, function(name, area){
           $.each(area, function(idx, loc){
-            addPiece(loc, 'spice').appendTo(regions);
+            addPiece(loc, 'oil').appendTo(regions);
           });
         });
         $.extend(s, {board: board, regions: regions, locations: locations, spice: spice, respice: respice});
