@@ -5,11 +5,6 @@
   <title>Indonesia</title>
   <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
   <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
-  <style>
-    svg .region:hover {
-      fill: red;
-    }
-  </style>
   <script>
 
     var s = (function(){
@@ -45,19 +40,12 @@
         center: center,
         coord:  coord,
         animate: tag('animate'),
+        animateTransform: tag('animateTransform'),
         rect:   tag('rect'),
         circle: tag('circle'),
         use:    tag('use', {href: "http://www.w3.org/1999/xlink"})
       }
     })(), use = s.use;
-
-    function getParts(el, name, upper){
-      return R.reduce(function(list, n){
-        var piece = '#' + name + '-' + n;
-        var part = el.find(piece);
-        return part.length === 0 ? list : list.concat([part]);
-      }, [], R.range(1, (upper || 10) + 1));
-    }
 
     function addPiece(el, href){
       var offset = 17.5;
@@ -72,15 +60,19 @@
       }, {}, names)
     }
 
-    function piece(board){
+    function piece(el){
       return function(name){
-        return board.find("#" + name);
+        return el.find("#" + name);
       }
     }
 
-    function pieces(board){
+    function pieces(el, upper){
       return function(name){
-        return getParts(board, name);
+        return R.reduce(function(list, n){
+          var piece = '#' + name + '-' + n;
+          var part = el.find(piece);
+          return part.length === 0 ? list : list.concat([part]);
+        }, [], R.range(1, (upper || 10) + 1));
       }
     }
 
@@ -92,11 +84,10 @@
 
     function style(el){
       return R.reduce(function(memo, assign){
-        if (!assign) return memo;
         var pair = assign.split(":");
         memo[pair[0].trim()] = pair[1].trim();
         return memo;
-      }, {}, (el.attr("style") || "").split(";"));
+      }, {}, R.filter(R.identity, (el.attr("style") || "").split(";")));
     }
 
     function extractStyle(el){
@@ -105,33 +96,49 @@
       return css;
     }
 
+    function styleToAttrs(el){
+      return el.attr(R.pick(['fill', 'stroke'], extractStyle(el)));
+    }
+
+    function glow(el, color){
+      var orig = el.attr("fill");
+      return el.
+        append(s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseover', dur: "1s", from: orig, to: color})).
+        append(s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseout' , dur: ".5s", from: color, to: orig}));
+    }
+
+    function identify(el){
+      return el.on("mouseover", function(){
+        console.log("mouseover", el.attr("id"));
+      });
+    }
+
     var regionNames = ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"];
     var goodsNames  = ["spice", "shipped-spice", "rice", "shipped-rice", "siap-faji", "shipped-siap-faji", "rubber", "shipped-rubber", "oil", "shipped-oil"];
 
     $(function(){
       $("#indonesia").load(function(){
         var board   = $(this.contentDocument);
-        var layers  = {regions: board.find("#layer7"), oceans: board.find("#layer2").remove(), arrows: board.find("#layer5").remove()};
+        var layers  = {regions: board.find("#layer7"), oceans: board.find("#layer2"), arrows: board.find("#layer5")};
         var goods   = getElements(piece(board) , goodsNames);
         var regions = getElements(pieces(board), regionNames);
-        var tile = cycles(goodsNames);
-        $.each(regions, function(name, region){
-          $.each(region, function(idx, spot){
-            spot.attr(R.pick(['fill', 'stroke'], extractStyle(spot)));
-            addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
-            var orig = spot.attr("fill"), other = "#bb625e", dim = "#333";
-            var over = s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseover', dur: "1s", from: orig, to: other}).appendTo(spot);
-            var out  = s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseout' , dur: ".5s", from: other, to: orig}).appendTo(spot);
-            spot.on("mouseover", function(){
-              console.log("mouseover", piece);
-            });
-            spot.on("click", R.once(function(){
-              over.attr("from", dim);
-              out.attr("to", dim);
-            }));
-          });
+        var ocean   = getElements(pieces(board, 30), ["ocean"]).ocean;
+        var land    = R.map(function(el){ return $(el);}, R.flatten(R.values(regions)));
+        var tile    = cycles(goodsNames);
+        $.each(ocean, function(idx, sea){
+          styleToAttrs(sea);
+          sea.attr("fill", "lightblue");
+          glow(sea, "lightyellow");
+          identify(sea);
         });
-        $.extend(s, {board: board, layers: layers, regions: regions, goods: goods});
+        $.each(land, function(idx, spot){
+          styleToAttrs(spot);
+          addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
+          glow(spot, "dimgray");
+          identify(spot);
+        });
+
+        $.extend(s, {board: board, layers: layers, regions: regions, land: land, ocean: ocean, goods: goods});
       });
     });
 
