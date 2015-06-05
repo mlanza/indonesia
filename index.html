@@ -6,16 +6,26 @@
   <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
   <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
   <script>
-    var s = {};
 
-    function tag(tag) {
-      return function(attrs){
-        return $(document.createElementNS('http://www.w3.org/2000/svg', tag)).attr(attrs || {});
+    var s = (function(){
+      var svgns = "http://www.w3.org/2000/svg";
+
+      function tag(name, ns){
+        ns || (ns = {});
+        return function(attrs){
+          var el = document.createElementNS(svgns, name);
+          $.each(attrs, function(key, value){
+            ns[key] ? el.setAttributeNS(ns[key], key, value) : el.setAttribute(key, value);
+          });
+          return $(el);
+        }
       }
-    }
-
-    var circle = tag('circle');
-    var use    = tag('use');
+      return {
+        rect:   tag('rect'),
+        circle: tag('circle'),
+        use:    tag('use', {href: "http://www.w3.org/1999/xlink"})
+      }
+    })(), use = s.use;
 
     $(function(){
       $("#indonesia").load(function(){
@@ -24,9 +34,8 @@
         var oceans  = board.find("#layer2").remove();
         var arrows  = board.find("#layer5").remove();
         var spice   = board.find("#spice");
-        var sp      = use({'xlink:href': '#spice', x: 550, y: 550}).appendTo(regions);
-        var c       = circle({cx: 50, cy: 50, r:40, stroke: 'black', 'stroke-width': 2, fill: 'red'}).appendTo(regions);
-        $.extend(s, {board: board, spice: spice, sp: sp, c: c});
+        var respice = use({href: '#spice', x: 0, y: 50}).appendTo(regions);
+        $.extend(s, {board: board, regions: regions, spice: spice, respice: respice});
       });
     });
 
