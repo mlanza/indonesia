@@ -1,117 +1,38 @@
-<script src="svg.js" type="text/javascript" charset="utf-8"></script>
-<script src="svg.topath.js" type="text/javascript" charset="utf-8"></script>
-<script src="svg.parser.js" type="text/javascript" charset="utf-8"></script>
-<script src="svg.import.js" type="text/javascript" charset="utf-8"></script>
-<script src="svg.easing.js" type="text/javascript" charset="utf-8"></script>
-<script src="jquery.js" type="text/javascript" charset="utf-8"></script>
-<script src="ramda.js" type="text/javascript" charset="utf-8"></script>
-<div id='indonesia' style='width: 2650px; height: 1280px;'></div>
-<script>
-  var s = {}
-  var map  = SVG('indonesia');
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Indonesia</title>
+  <script src="jquery.js" type="text/javascript" charset="utf-8"></script>
+  <script src="ramda.js" type="text/javascript" charset="utf-8"></script>
+  <script>
+    var s = {};
 
-  function getParts(s, name, upper){
-    return R.reduce(function(list, n){
-      var piece = name + '-' + n;
-      var part = s.get(piece);
-      return part ? list.concat([part]) : list;
-    }, [], R.range(1, (upper || 10) + 1));
-  }
-
-  function getRegions(regions){
-    return function(s){
-      return R.reduce(function(dict, name){
-        dict[name] = getParts(s, name);
-        return dict;
-      }, {}, regions);
+    function tag(tag) {
+      return function(attrs){
+        return $(document.createElementNS('http://www.w3.org/2000/svg', tag)).attr(attrs || {});
+      }
     }
-  }
 
-  function getOcean(s){
-    return getParts(s, "ocean", 22);
-  }
+    var circle = tag('circle');
+    var use    = tag('use');
 
-  var svg = $.ajax({url: 'indonesia.svg', dataType: 'text'}).then(function(text){
-    return map.svg(text);
-  });
-
-
-  function mount(name){
-    return function(value){
-      s[name] = value;
-    }
-  }
-
-  function doto(fn){
-    return function (){
-      return this.each ? this.each(fn) : fn.call(this);
-    }
-  }
-
-  function hoverHighlight(target, items){
-    R.forEach(function(item){
-      item.on('mouseover', doto(function(){
-        var color = new SVG.Color(this.data('fill')).morph(target);
-        console.log('hover', this.attr('id'), this);
-        this.animate(500).fill(color.at(0.4).toHex());
-      })).on('mouseout', doto(function(){
-        this.animate(500).fill(this.data('fill'));
-      }));
-    }, items);
-  }
-
-  var bg = function(color){
-    return doto(function(){
-      this.fill(color);
+    $(function(){
+      $("#indonesia").load(function(){
+        var board   = $(this.contentDocument);
+        var regions = board.find("#layer7");
+        var oceans  = board.find("#layer2").remove();
+        var arrows  = board.find("#layer5").remove();
+        var spice   = board.find("#spice");
+        var sp      = use({'xlink:href': '#spice', x: 550, y: 550}).appendTo(regions);
+        var c       = circle({cx: 50, cy: 50, r:40, stroke: 'black', 'stroke-width': 2, fill: 'red'}).appendTo(regions);
+        $.extend(s, {board: board, spice: spice, sp: sp, c: c});
+      });
     });
-  }
 
-  var glow = doto(function(){
-    var mode = SVG.easing.quadInOut, time = 500;
-    function out(){
-      this.animate(time, mode).attr({fill: this.data('fill')});
-    }
-    this.animate(time, mode).fill('#FFFFE0').after(out);
-  });
-
-  var addGlow = R.forEach(function(item){
-    item.on('click', glow);
-  });
-
-  var styleToAttr = doto(function(){
-    var color = this.style("fill");
-    if (color !== "none") this.fill({color: color});
-    this.stroke({color: this.style("stroke"), width: this.style("stroke-width")});
-    this.attr("style", null);
-    this.data('fill', this.attr('fill'));
-  });
-
-  var offsets = {'aceh-1': [10, 10], 'aceh-2': [0, -20], 'aceh-3': [10, -20]};
-  var spices = [];
-  svg.then(mount("svg"));
-  svg.then(getRegions(["aceh","sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])).then(mount('regions')).then(function(){
-    var spice = s.svg.get("spice");
-    var reg   = s.svg.get("layer7");
-    var tiles = s.svg.get("layer9");
-    tiles.hide();
-    var regions = R.flatten(R.values(s.regions));
-    R.forEach(function(item){
-      styleToAttr.call(item);
-      var size = 26;
-      var offset = offsets[item.attr('id')] || [0, 0];
-      reg.use(spice).translate(item.cx() - (size / 2) + offset[0] + -1330 , item.cy() - (size / 2) + offset[1] + -630);
-    }, regions);
-    hoverHighlight('#000', regions);
-    addGlow(regions);
-  });
-  svg.then(getOcean).then(mount("ocean")).then(function(){
-    R.forEach(function(item){
-      item.fill("#AFEEEE");
-      styleToAttr.call(item);
-    }, s.ocean);
-    addGlow(s.ocean);
-  }).then(function(){
-    hoverHighlight('#FFF', s.ocean);
-  });
-
-</script>
+  </script>
+</head>
+<body>
+  <object id="indonesia" type="image/svg+xml" data="map/indonesia.svg">No SVG support</object>
+</body>
+</html>
