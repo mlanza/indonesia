@@ -20,12 +20,51 @@
           return $(el);
         }
       }
+
+      function bbox(el){
+        return el.get(0).getBBox();
+      }
+
+      function coord(el){
+        var b = bbox(el);
+        return {x: b.x, y: b.y};
+      }
+
+      function center(el){
+        var b = bbox(el);
+        return {x: b.x + (b.width / 2), y: b.y + (b.height / 2)};
+      }
+
       return {
+        bbox:   bbox,
+        center: center,
+        coord:  coord,
         rect:   tag('rect'),
         circle: tag('circle'),
         use:    tag('use', {href: "http://www.w3.org/1999/xlink"})
       }
     })(), use = s.use;
+
+    function getParts(el, name, upper){
+      return R.reduce(function(list, n){
+        var piece = '#' + name + '-' + n;
+        var part = el.find(piece);
+        return part.length > 0 ? list.concat([part]) : list;
+      }, [], R.range(1, (upper || 10) + 1));
+    }
+
+    function getRegions(el, regions){
+      return R.reduce(function(dict, name){
+        dict[name] = getParts(el, name);
+        return dict;
+      }, {}, regions);
+    }
+
+    function addPiece(el, id){
+      var offset = 17.5;
+      var c = s.center(el), x = c.x - offset, y = c.y - offset;
+      return use({x: x, y: y, href: '#' + id});
+    }
 
     $(function(){
       $("#indonesia").load(function(){
@@ -34,8 +73,14 @@
         var oceans  = board.find("#layer2").remove();
         var arrows  = board.find("#layer5").remove();
         var spice   = board.find("#spice");
-        var respice = use({href: '#spice', x: 0, y: 50}).appendTo(regions);
-        $.extend(s, {board: board, regions: regions, spice: spice, respice: respice});
+        var locations = getRegions(regions, ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"])
+        var respice = use({href: '#spice', x: 0, y: 0}).appendTo(regions);
+        $.each(locations, function(name, area){
+          $.each(area, function(idx, loc){
+            addPiece(loc, 'spice').appendTo(regions);
+          });
+        });
+        $.extend(s, {board: board, regions: regions, locations: locations, spice: spice, respice: respice});
       });
     });
 
