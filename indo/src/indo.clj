@@ -2,8 +2,25 @@
 
 (defrecord Area [terrain spaces])
 (defrecord Space [edges pieces])
-(defrecord Spot [name number])
-(defrecord State [spaces])
+(defrecord Spot [name number]) ;reference to a spot on the board
+(defrecord Board [spaces])
+(defrecord City [size goods-delivered])
+(defrecord Deed [name kind era-maximums])
+(defrecord Game [board deeds])
+
+(def unavailable 0)
+(def unavailable? (partial = unavailable))
+(def unlimited nil)
+(def unlimited? (partial = unlimited))
+(def deed ->Deed)
+
+(def deeds [
+  (deed "Sumatera Utan" :shipping [unavailable 4 5])
+  (deed "Bali" :production [unlimited unlimited unlimited])
+  ])
+
+(defn city []
+  (->City 1 '()))
 
 (def spot ->Spot)
 
@@ -353,4 +370,4 @@
           (keys (:spaces area))))
       spaces)))
 
-(defn init [] (->State spaces))
+(defn init [] (->Game (->Board spaces) []))
