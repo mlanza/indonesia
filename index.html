@@ -116,7 +116,7 @@
       });
     }
 
-    var regionNames = ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-temur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"];
+    var regionNames = ["aceh", "sumatera-utara", "rian", "sumatera-barat", "sumatera-selatan", "java-timur", "halmahera", "benakulu", "lampung", "bali", "jambi", "jawa-barat", "java-tengah", "musa-tenggara-barat", "musa-tenggara-timur", "maluku", "papua", "sulawesi-utara", "sulawesi-tengah", "sulawesi-tenggara", "sulawesi-salatan", "kalimatan-salatan", "kalimatan-tengah", "kalimatan-barat", "kalimatan-timur", "sarawak"];
     var goodsNames  = ["spice", "shipped-spice", "rice", "shipped-rice", "siap-faji", "shipped-siap-faji", "rubber", "shipped-rubber", "oil", "shipped-oil"];
 
     $(function(){
@@ -136,7 +136,7 @@
         });
         $.each(land, function(idx, spot){
           styleToAttrs(spot);
-          addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
+          //addPiece(spot, '#' + tile(idx)).appendTo(layers.regions);
           glow(spot, "dimgray");
           identify(spot);
         });
