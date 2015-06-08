@@ -107,9 +107,12 @@
         append(s.animate({attributeName: "fill", fill: "freeze", begin: 'mouseout' , dur: ".5s", from: color, to: orig}));
     }
 
+    var edges = [];
+
     function identify(el){
-      return el.on("mouseover", function(){
-        console.log("mouseover", el.attr("id"));
+      return el.on("click", function(){
+        edges.push(el.attr("id"));
+        console.log("(edge " + edges.join(" ") + ")");
       });
     }
 
