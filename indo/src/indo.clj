@@ -8,11 +8,11 @@
 (defrecord CityCard [era spots])
 (defrecord Company [deeds])
 (defrecord Deed [name piece era-maximums spots])
-(defrecord Game [board deeds])
-(defrecord Player [name color cash total-spent companies r-&-d city-cards])
+(defrecord Game [board deeds players])
+(defrecord Player [name color cash total-spent slots r-&-d city-cards])
 
-(defn player [name color city-cards]
-  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :bid-multiplier 1} city-cards))
+(defn player [name color]
+  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :bid-multiplier 1} nil))
 
 (defn city-card [era & spots]
   (->CityCard era (sorted-set (flatten spots))))
@@ -463,4 +463,26 @@
           (keys (:spaces area))))
       spaces)))
 
-(defn init [] (->Game (->Board spaces) []))
+(defn shuffle-city-cards [cards]
+  (let [shuffled
+    (reduce-kv
+      (fn [m era cards]
+        (assoc m era (shuffle cards)))
+      {}
+     (group-by :era cards))]
+    (partition 3
+      (for [idx (range 0 5)
+            era (range 0 3)]
+        (get-in shuffled [era idx])))))
+
+(defn init [& players]
+  (let [hand (partial nth (shuffle-city-cards city-cards))]
+    (->Game
+      (->Board spaces)
+      deeds
+      (map-indexed
+        (fn [idx player] (assoc-in player :city-cards (hand idx)))
+        players))))
+
+(defn sample []
+  (init (player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)))
