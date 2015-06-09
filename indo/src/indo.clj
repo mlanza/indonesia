@@ -464,25 +464,27 @@
       spaces)))
 
 (defn shuffle-city-cards [cards]
-  (let [shuffled
-    (reduce-kv
-      (fn [m era cards]
-        (assoc m era (shuffle cards)))
-      {}
-     (group-by :era cards))]
-    (partition 3
-      (for [idx (range 0 5)
-            era (range 0 3)]
-        (get-in shuffled [era idx])))))
+  (reduce-kv
+    (fn [m era cards]
+      (assoc m era (shuffle cards)))
+    {}
+   (group-by :era cards)))
 
-(defn init [& players]
-  (let [hand (partial nth (shuffle-city-cards city-cards))]
+(defn deal-city-cards [cards]
+  (partition 3
+    (for [idx (range 0 5)
+          era (range 0 3)]
+      (get-in cards [era idx]))))
+
+(defn init [players]
+  (let [hand (partial nth (-> city-cards shuffle-city-cards deal-city-cards))]
     (->Game
       (->Board spaces)
       deeds
       (map-indexed
-        (fn [idx player] (assoc-in player :city-cards (hand idx)))
+        (fn [idx player]
+          (assoc player :city-cards (hand idx)))
         players))))
 
-(defn sample []
-  (init (player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)))
+(def sample
+  (partial init [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
