@@ -5,61 +5,17 @@
 (defrecord Spot [name number]) ;reference to a spot on the board
 (defrecord Board [spaces])
 (defrecord City [size goods-delivered])
-(defrecord Card [spaces])
-(defrecord Deed [name kind era-maximums])
+(defrecord CityCard [era spots])
+(defrecord Company [deeds])
+(defrecord Deed [name piece era-maximums spots])
 (defrecord Game [board deeds])
+(defrecord Player [name color cash total-spent companies r-&-d city-cards])
 
-(def unavailable 0)
-(def unavailable? (partial = unavailable))
-(def unlimited nil)
-(def unlimited? (partial = unlimited))
-(def deed ->Deed)
-(def card ->Card)
+(defn player [name color city-cards]
+  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :bid-multiplier 1} city-cards))
 
-(def city-cards {
-  :a [(card ["Sulawesi Salatan" "Java Timur" "Sumatera Selatan"])
-      (card ["Sulawesi Utara" "Sulawesi Salatan" "Jawa Barat"])
-      (card ["Sulawesi Utara" "Bali" "Java Tengah"])
-      (card ["Java Timur" "Jawa Barat" "Bali"])
-      (card ["Sumatera Selatan" "Jawa Barat" "Java Tengah"])]
-  :b [(card ["Aceh" [1 2 3] "Lampung" "Maluku"])
-      (card ["Aceh" [1 2 3] "Sumatera Utara" [1 2 3] "Benakulu"])
-      (card ["Sumatera Utara" [1 2 3] "Kalimatan Salatan" "Maluku" [1 2 3 4 5 8 9]])
-      (card ["Sumatera Barat" [1 2] "Lampung" "Kalimatan Salatan"])
-      (card ["Sumatera Barat" [1 2] "Benakulu" "Jawa Barat"])]
-  :c [(card ["Halmahera" "Papua" "Musa Tenggara Barat"])
-      (card ["Halmahera" "Musa Tenggara Timur" [5 4 3 6 2] "Jawa Barat"])
-      (card ["Sarawak" "Sulawesi Tengah" "Papua"])
-      (card ["Sarawak" "Musa Tenggara Barat" "Jambi"])
-      (card ["Jambi" "Sulawesi Tengah" "Musa Tenggara Timur" [2 3 4 5 6]])]
-  })
-
-(def deeds {
-  :a [(deed "Halmahera" :spice)
-      (deed "Maluku" :spice)
-      (deed "Jawa Barat" :rice)
-      (deed "Jawa Timur" :shipping [2 3 3])
-      (deed "Lampung" :shipping [2 3 4])
-      (deed "Sulawesi Selatan" :shipping [3 3 4])
-      (deed "Halmahera" :shipping [3 4 5])
-      (deed "Bali" :rice)]
-  :b [(deed "Aceh" :rice)
-      (deed "Kalimantan Timur" :rice)
-      (deed "Sulawesi Tengah" :spice)
-      (deed "Jawa Tengah" :spice)
-      (deed "Rian" :rubber)
-      (deed "Sumatera Barat" :rubber)
-      (deed "Kalimantan Barat" :rubber)
-      (deed "Jawa Barat" :shipping [0 4 5])
-      (deed "Sumatera Utara" :shipping [0 4 5])]
-  :c [(deed "Bali" :rice)
-      (deed "Sulawesi Tenggara" :rice)
-      (deed "Papua" :oil)
-      (deed "Kalimantan Selatan" :oil)
-      (deed "Sumatera Selatan" :spice)
-      (deed "Sarawak" :oil)
-      (deed "Papua" :rubber)
-      (deed "Maluku" :oil)])
+(defn city-card [era & spots]
+  (->CityCard era (sorted-set (flatten spots))))
 
 (defn city []
   (->City 1 '()))
@@ -94,10 +50,10 @@
   "Kalimatan Tengah" 5
   "Kalimatan Timur" 5
   "Lampung" 4
-  "Maluku" 7
+  "Maluku" 9
   "Musa Tenggara Barat" 2
   "Musa Tenggara Timur" 6
-  "Papua" 9
+  "Papua" 7
   "Rian" 5
   "Sarawak" 4
   "Sulawesi Salatan" 3
@@ -108,7 +64,15 @@
   "Sumatera Selatan" 7
   "Sumatera Utara" 4})
 
-(def ocean (area :water 22))
+(def land
+  (reduce-kv
+    (fn [m k v]
+      (assoc m k
+        (area :land v)))
+    {} provinces))
+
+(def water
+  (area :water 22))
 
 (defn edge [spaces from & tos]
   (update-in spaces [(:name from) :spaces (:number from) :edges] #(concat % tos)))
@@ -180,6 +144,8 @@
 (def maluku-5 (spot "Maluku" 5))
 (def maluku-6 (spot "Maluku" 6))
 (def maluku-7 (spot "Maluku" 7))
+(def maluku-8 (spot "Maluku" 8))
+(def maluku-9 (spot "Maluku" 9))
 (def musa-tenggara-barat-1 (spot "Musa Tenggara Barat" 1))
 (def musa-tenggara-barat-2 (spot "Musa Tenggara Barat" 2))
 (def musa-tenggara-timur-1 (spot "Musa Tenggara Timur" 1))
@@ -195,8 +161,6 @@
 (def papua-5 (spot "Papua" 5))
 (def papua-6 (spot "Papua" 6))
 (def papua-7 (spot "Papua" 7))
-(def papua-8 (spot "Papua" 8))
-(def papua-9 (spot "Papua" 9))
 (def rian-1 (spot "Rian" 1))
 (def rian-2 (spot "Rian" 2))
 (def rian-3 (spot "Rian" 3))
@@ -259,12 +223,8 @@
 
 (def spaces
   (->
-    (reduce-kv
-      (fn [m k v]
-        (assoc m k
-          (area :land v)))
-      {} provinces)
-    (assoc "Ocean" ocean)
+    land
+    (assoc "Ocean" water)
     (edge aceh-1 aceh-2 aceh-3 ocean-12)
     (edge aceh-2 ocean-12 ocean-14 sumatera-utara-1 aceh-3 aceh-1)
     (edge aceh-3 ocean-12 aceh-1 aceh-2 sumatera-utara-1 sumatera-utara-3 aceh-4)
@@ -333,13 +293,13 @@
     (edge maluku-7 maluku-6 ocean-2)
     (edge maluku-8 maluku-1 maluku-9 ocean-4)
     (edge maluku-9 papua-3 maluku-8 ocean-4)
+    (edge papua-1 ocean-3 papua-2)
+    (edge papua-2 ocean-3 papua-1 papua-6 papua-7)
     (edge papua-3 papua-5 papua-4 ocean-4 maluku-9 papua-7)
     (edge papua-4 ocean-4 papua-3 papua-5)
     (edge papua-5 papua-4 papua-3 papua-7 ocean-3)
-    (edge papua-6 papua-8 ocean-3)
-    (edge papua-7 papua-8 ocean-3 papua-5 papua-3 ocean-4)
-    (edge papua-8 papua-6 papua-7 papua-9 ocean-3)
-    (edge papua-9 papua-8 ocean-3)
+    (edge papua-6 maluku-1 ocean-3)
+    (edge papua-7 maluku-1 ocean-3 papua-5 papua-3 ocean-4)
     (edge halmahera-1 halmahera-3 halmahera-2 ocean-2)
     (edge halmahera-2 halmahera-3 halmahera-1 ocean-2)
     (edge halmahera-3 halmahera-1 halmahera-2 halmahera-5 halmahera-4 ocean-2)
@@ -381,7 +341,7 @@
     (edge sarawak-4 sarawak-3 kalimatan-timur-5 kalimatan-barat-1 kalimatan-barat-2 kalimatan-barat-3 ocean-13)
     (edge ocean-1 ocean-2 ocean-20 ocean-6 ocean-19 ocean-13 sulawesi-utara-2 sulawesi-tengah-1 sulawesi-tengah-2 sulawesi-salatan-1 sulawesi-salatan-2 kalimatan-timur-1 kalimatan-timur-2 kalimatan-timur-3 kalimatan-timur-4 sarawak-1)
     (edge ocean-2 ocean-3 ocean-5 ocean-6 ocean-20 ocean-1 maluku-7 maluku-6 halmahera-1 halmahera-2 halmahera-3 halmahera-4 halmahera-5 halmahera-6)
-    (edge ocean-3 ocean-4 ocean-5 ocean-2 papua-7 papua-8 papua-9 papua-6 papua-5)
+    (edge ocean-3 papua-1 papua-2 papua-6 papua-5 papua-7 ocean-2 ocean-5 ocean-4)
     (edge ocean-4 ocean-5 ocean-3 maluku-8 maluku-9 papua-7 papua-3 papua-4)
     (edge ocean-5 ocean-7 ocean-6 ocean-2 ocean-3 ocean-4 maluku-1 maluku-5 maluku-4 maluku-3 maluku-2)
     (edge ocean-6 ocean-20 ocean-2 ocean-5 ocean-7 ocean-8 ocean-19 ocean-1 sulawesi-salatan-3 sulawesi-salatan-2 sulawesi-tenggara-3 sulawesi-tenggara-2 sulawesi-tenggara-1)
@@ -402,7 +362,98 @@
     (edge ocean-21 ocean-17 ocean-18 ocean-19 ocean-8 java-timur-3 java-timur-4 java-timur-5 java-timur-1 java-timur-2 java-tengah-2 java-tengah-1)
     (edge ocean-22 ocean-12 ocean-11 ocean-10)))
 
-(def spots
+(defn get-space [spot]
+  (get-in spaces [(:name spot) :spaces (:number spot)]))
+
+(defn adjacent [spots]
+  (remove
+    (set spots)
+    (set
+      (flatten
+        (map
+          (fn [spot]
+            (let [space (get-space spot)]
+              (:edges space)))
+        spots)))))
+
+(defn spots
+  ([name]
+    (let [size (count (keys (get-in spaces [name :spaces])))]
+      (spots name (range 1 (inc size)))))
+  ([name numbers]
+    (let [loc (partial spot name)]
+      (map loc numbers))))
+
+(defn get-terrain [spot]
+  (:terrain (spaces (:name spot))))
+
+(defn terrain? [kind spot]
+  (= (get-terrain spot) kind))
+
+(def land?
+  (partial terrain? :land))
+
+(def water?
+  (partial terrain? :water))
+
+(def water-spots
+  (partial filter water?))
+
+(defn deed
+  ([name piece]
+    (->Deed name piece nil (spots name)))
+  ([name piece era-maximums]
+    (->Deed name piece era-maximums
+      (->
+        (spots name)
+        adjacent
+        water-spots))))
+
+(def deeds [
+ [(deed "Halmahera" :spice)
+  (deed "Maluku" :spice)
+  (deed "Jawa Barat" :rice)
+  (deed "Java Timur" :ship [2 3 3])
+  (deed "Lampung" :ship [2 3 4])
+  (deed "Sulawesi Salatan" :ship [3 3 4])
+  (deed "Halmahera" :ship [3 4 5])
+  (deed "Bali" :rice)]
+ [(deed "Aceh" :rice)
+  (deed "Kalimatan Timur" :rice)
+  (deed "Sulawesi Tengah" :spice)
+  (deed "Java Tengah" :spice)
+  (deed "Rian" :rubber)
+  (deed "Sumatera Barat" :rubber)
+  (deed "Kalimatan Barat" :rubber)
+  (deed "Jawa Barat" :ship [0 4 5])
+  (deed "Sumatera Utara" :ship [0 4 5])]
+ [(deed "Bali" :rice)
+  (deed "Sulawesi Tenggara" :rice)
+  (deed "Papua" :oil)
+  (deed "Kalimatan Salatan" :oil)
+  (deed "Sumatera Selatan" :spice)
+  (deed "Sarawak" :oil)
+  (deed "Papua" :rubber)
+  (deed "Maluku" :oil)]])
+
+(def city-cards [
+  (city-card 0 (spots "Sulawesi Salatan") (spots "Java Timur") (spots "Sumatera Selatan"))
+  (city-card 0 (spots "Sulawesi Utara") (spots "Sulawesi Salatan") (spots "Jawa Barat"))
+  (city-card 0 (spots "Sulawesi Utara") (spots "Bali") (spots "Java Tengah"))
+  (city-card 0 (spots "Java Timur") (spots "Jawa Barat") (spots "Bali"))
+  (city-card 0 (spots "Sumatera Selatan") (spots "Jawa Barat") (spots "Java Tengah"))
+  (city-card 1 (spots "Aceh" [1 2 3]) (spots "Lampung") (spots "Maluku"))
+  (city-card 1 (spots "Aceh" [1 2 3]) (spots "Sumatera Utara" [1 2 3]) (spots "Benakulu"))
+  (city-card 1 (spots "Sumatera Utara" [1 2 3]) (spots "Kalimatan Salatan") (spots "Maluku" [1 2 3 4 5 8 9]))
+  (city-card 1 (spots "Sumatera Barat" [1 2]) (spots "Lampung") (spots "Kalimatan Salatan"))
+  (city-card 1 (spots "Sumatera Barat" [1 2]) (spots "Benakulu") (spots "Jawa Barat"))
+  (city-card 2 (spots "Halmahera") (spots "Papua") (spots "Musa Tenggara Barat"))
+  (city-card 2 (spots "Halmahera") (spots "Musa Tenggara Timur" [5 4 3 6 2]) (spots "Jawa Barat"))
+  (city-card 2 (spots "Sarawak") (spots "Sulawesi Tengah") (spots "Papua"))
+  (city-card 2 (spots "Sarawak") (spots "Musa Tenggara Barat") (spots "Jambi"))
+  (city-card 2 (spots "Jambi") (spots "Sulawesi Tengah") (spots "Musa Tenggara Timur" [2 3 4 5 6]))])
+
+(def list-spots
   (apply concat
     (map
       (fn [[name area]]
