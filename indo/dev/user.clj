@@ -15,6 +15,6 @@
 (def system (atom nil))
 
 (defn start []
-  (reset! system (indo/init)))
+  (reset! system (indo/sample)))
 
 (start)
