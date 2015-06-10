@@ -10,6 +10,7 @@
 (defrecord Deed [name piece era-maximums spots])
 (defrecord Game [board era open-money])
 (defrecord Player [name color cash total-spent slots r-&-d city-cards])
+(defrecord Zone [spots])
 
 (defn player [name color]
   (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :turn-order-bid 1} nil))
@@ -21,6 +22,9 @@
   (->City 1 '()))
 
 (def spot ->Spot)
+
+(defn numbered [f spots]
+  (filter (fn [spot] (f (:number spot))) spots))
 
 (defn area [terrain count]
   (->Area
@@ -35,6 +39,49 @@
 
 (defn locator [spot]
   #(get-in % [(:name spot) :spaces (:number spot)]))
+
+(defn zone
+  ([spots]
+    (->Zone spots))
+  ([name size]
+    (zone (map #(spot name %) (range 1 (inc size))))))
+
+(defn load-zones [sizes]
+  (reduce-kv
+    (fn [m name size]
+      (assoc m name (zone name size)))
+    {}
+    sizes))
+
+(def zones
+  (load-zones {
+    "Aceh" 4
+    "Bali" 2
+    "Benakulu" 3
+    "Halmahera" 6
+    "Jambi" 3
+    "Java Timur" 6
+    "Java Tengah" 3
+    "Jawa Barat" 7
+    "Kalimatan Barat" 3
+    "Kalimatan Salatan" 3
+    "Kalimatan Tengah" 5
+    "Kalimatan Timur" 5
+    "Lampung" 4
+    "Maluku" 9
+    "Musa Tenggara Barat" 2
+    "Musa Tenggara Timur" 6
+    "Papua" 7
+    "Rian" 5
+    "Sarawak" 4
+    "Sulawesi Salatan" 3
+    "Sulawesi Tengah" 5
+    "Sulawesi Tenggara" 3
+    "Sulawesi Utara" 2
+    "Sumatera Barat" 4
+    "Sumatera Selatan" 7
+    "Sumatera Utara" 4
+    "Ocean" 22}))
 
 (def provinces {
   "Aceh" 4
@@ -82,6 +129,7 @@
     (clojure.string/lower-case (clojure.string/replace (str name " " number) " " "-")))
   ([spot]
    (to-id (:name spot) (:number spot))))
+
 
 (def aceh-1 (spot "Aceh" 1))
 (def aceh-2 (spot "Aceh" 2))
@@ -362,6 +410,42 @@
     (edge ocean-21 ocean-17 ocean-18 ocean-19 ocean-8 java-timur-3 java-timur-4 java-timur-5 java-timur-1 java-timur-2 java-tengah-2 java-tengah-1)
     (edge ocean-22 ocean-12 ocean-11 ocean-10)))
 
+(defn spots
+  ([name]
+    (let [size (count (keys (get-in spaces [name :spaces])))]
+      (spots name (range 1 (inc size)))))
+  ([name numbers]
+    (let [loc (partial spot name)]
+      (map loc numbers))))
+
+(def aceh (spots "Aceh"))
+(def bali (spots "Bali"))
+(def benakulu (spots "Benakulu"))
+(def halmahera (spots "Halmahera"))
+(def jambi (spots "Jambi"))
+(def java-tengah (spots "Java Tengah"))
+(def java-timur (spots "Java Timur"))
+(def jawa-barat (spots "Jawa Barat"))
+(def kalimatan-barat (spots "Kalimatan Barat"))
+(def kalimatan-salatan (spots "Kalimatan Salatan"))
+(def kalimatan-tengah (spots "Kalimatan Tengah"))
+(def kalimatan-timur (spots "Kalimatan Timur"))
+(def lampung (spots "Lampung"))
+(def maluku (spots "Maluku"))
+(def musa-tenggara-barat (spots "Musa Tenggara Barat"))
+(def musa-tenggara-timur (spots "Musa Tenggara Timur"))
+(def papua (spots "Papua"))
+(def rian (spots "Rian"))
+(def sarawak (spots "Sarawak"))
+(def sulawesi-salatan (spots "Sulawesi Salatan"))
+(def sulawesi-tengah (spots "Sulawesi Tengah"))
+(def sulawesi-tenggara (spots "Sulawesi Tenggara"))
+(def sulawesi-utara (spots "Sulawesi Utara"))
+(def sumatera-barat (spots "Sumatera Barat"))
+(def sumatera-selatan (spots "Sumatera Selatan"))
+(def sumatera-utara (spots "Sumatera Utara"))
+(def ocean  (spots "Ocean"))
+
 (defn get-space [spot]
   (get-in spaces [(:name spot) :spaces (:number spot)]))
 
@@ -375,14 +459,6 @@
             (let [space (get-space spot)]
               (:edges space)))
         spots)))))
-
-(defn spots
-  ([name]
-    (let [size (count (keys (get-in spaces [name :spaces])))]
-      (spots name (range 1 (inc size)))))
-  ([name numbers]
-    (let [loc (partial spot name)]
-      (map loc numbers))))
 
 (defn get-terrain [spot]
   (:terrain (spaces (:name spot))))
@@ -437,21 +513,21 @@
   (deed "Maluku" :oil)]])
 
 (def city-cards [
-  (city-card 0 (spots "Sulawesi Salatan") (spots "Java Timur") (spots "Sumatera Selatan"))
-  (city-card 0 (spots "Sulawesi Utara") (spots "Sulawesi Salatan") (spots "Jawa Barat"))
-  (city-card 0 (spots "Sulawesi Utara") (spots "Bali") (spots "Java Tengah"))
-  (city-card 0 (spots "Java Timur") (spots "Jawa Barat") (spots "Bali"))
-  (city-card 0 (spots "Sumatera Selatan") (spots "Jawa Barat") (spots "Java Tengah"))
-  (city-card 1 (spots "Aceh" [1 2 3]) (spots "Lampung") (spots "Maluku"))
-  (city-card 1 (spots "Aceh" [1 2 3]) (spots "Sumatera Utara" [1 2 3]) (spots "Benakulu"))
-  (city-card 1 (spots "Sumatera Utara" [1 2 3]) (spots "Kalimatan Salatan") (spots "Maluku" [1 2 3 4 5 8 9]))
-  (city-card 1 (spots "Sumatera Barat" [1 2]) (spots "Lampung") (spots "Kalimatan Salatan"))
-  (city-card 1 (spots "Sumatera Barat" [1 2]) (spots "Benakulu") (spots "Jawa Barat"))
-  (city-card 2 (spots "Halmahera") (spots "Papua") (spots "Musa Tenggara Barat"))
-  (city-card 2 (spots "Halmahera") (spots "Musa Tenggara Timur" [5 4 3 6 2]) (spots "Jawa Barat"))
-  (city-card 2 (spots "Sarawak") (spots "Sulawesi Tengah") (spots "Papua"))
-  (city-card 2 (spots "Sarawak") (spots "Musa Tenggara Barat") (spots "Jambi"))
-  (city-card 2 (spots "Jambi") (spots "Sulawesi Tengah") (spots "Musa Tenggara Timur" [2 3 4 5 6]))])
+  (city-card 0 sulawesi-salatan java-timur sumatera-selatan)
+  (city-card 0 sulawesi-utara sulawesi-salatan jawa-barat)
+  (city-card 0 sulawesi-utara bali java-tengah)
+  (city-card 0 java-timur jawa-barat bali)
+  (city-card 0 sumatera-selatan jawa-barat java-tengah)
+  (city-card 1 (numbered #{1 2 3} aceh) lampung maluku)
+  (city-card 1 (numbered #{1 2 3} aceh) (numbered #{1 2 3} sumatera-utara) benakulu)
+  (city-card 1 (numbered #{1 2 3} sumatera-utara) kalimatan-salatan (numbered #{1 2 3 4 5 8 9} maluku))
+  (city-card 1 (numbered #{1 2} sumatera-barat) lampung kalimatan-salatan)
+  (city-card 1 (numbered #{1 2} sumatera-barat) benakulu jawa-barat)
+  (city-card 2 halmahera papua musa-tenggara-barat)
+  (city-card 2 halmahera (numbered #{2 3 4 5 6} musa-tenggara-timur) jawa-barat)
+  (city-card 2 sarawak sulawesi-tengah papua)
+  (city-card 2 sarawak musa-tenggara-barat jambi)
+  (city-card 2 jambi sulawesi-tengah (numbered #{2 3 4 5 6} musa-tenggara-timur))])
 
 (def list-spots
   (apply concat
