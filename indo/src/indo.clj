@@ -3,16 +3,16 @@
 (defrecord Area [terrain spaces])
 (defrecord Space [edges pieces])
 (defrecord Spot [name number]) ;reference to a spot on the board
-(defrecord Board [spaces])
+(defrecord Board [spaces available-deeds turn-order-track])
 (defrecord City [size goods-delivered])
 (defrecord CityCard [era spots])
 (defrecord Company [deeds])
 (defrecord Deed [name piece era-maximums spots])
-(defrecord Game [board deeds players])
+(defrecord Game [board era open-money])
 (defrecord Player [name color cash total-spent slots r-&-d city-cards])
 
 (defn player [name color]
-  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :bid-multiplier 1} nil))
+  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :turn-order-bid 1} nil))
 
 (defn city-card [era & spots]
   (->CityCard era (sorted-set (flatten spots))))
@@ -476,15 +476,28 @@
           era (range 0 3)]
       (get-in cards [era idx]))))
 
-(defn init [players]
-  (let [hand (partial nth (-> city-cards shuffle-city-cards deal-city-cards))]
-    (->Game
-      (->Board spaces)
-      deeds
-      (map-indexed
-        (fn [idx player]
-          (assoc player :city-cards (hand idx)))
-        players))))
+(def phases [
+  :new-era
+  :bid-for-turn-order
+  :mergers
+  :aquisitions
+  :research-and-development
+  :operations
+  :city-growth])
+
+(defn init
+  ([open-money players]
+    (let [hand       (partial nth (-> city-cards shuffle-city-cards deal-city-cards))
+          turn-order (map-indexed
+                       (fn [idx player]
+                         (assoc player :city-cards (hand idx)))
+                       players)]
+      (->Game
+        (->Board spaces (nth deeds 0) turn-order)
+        0
+        open-money)))
+  ([players]
+    (init true players)))
 
 (def sample
   (partial init [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
