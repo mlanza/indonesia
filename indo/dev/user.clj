@@ -12,8 +12,10 @@
    [clojure.tools.namespace.repl :refer [refresh refresh-all]]
    [indo]))
 
+(refer 'indo)
+
 (defn sample []
-  (indo/init [(indo/player "Mario" :white) (indo/player "Rick" :black) (indo/player "Sean" :green) (indo/player "Steve" :yellow)]))
+  (init [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
 
 (def system (atom nil))
 

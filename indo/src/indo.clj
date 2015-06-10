@@ -1,35 +1,70 @@
 (ns indo)
 
 (defrecord Game [board era open-money])
-(defrecord Player [name color cash total-spent slots r-&-d city-cards])
+(defrecord Player [name color cash total-spent revenue slots advancements city-cards])
 (defrecord Board [spaces edges pieces available-deeds turn-order-track])
-(defrecord Spot [name number]) ;reference to a spot on the board
 (defrecord City [size goods-delivered])
-(defrecord CityCard [era spots])
+(defrecord CityCard [era area])
 (defrecord Company [deeds])
-(defrecord Deed [name piece era-maximums spots])
+(defrecord Deed [name piece era-maximums area])
+(defrecord Ship [company])
+(defrecord Good [company])
+
+(def ship ->Ship)
+(def good ->Good)
+(def company ->Company)
 
 (defn player [name color]
-  (->Player name color 100 0 [] {:slots 1 :mergers 1 :expansion 1 :turn-order-bid 1} nil))
+  (->Player name color 100 0 0 #{} {:slots 1 :mergers 1 :hull 1 :expansion 1 :bid-multiplier 1} nil))
+
+(def bid-multiplier [1 5 25 100 400])
+(def advancement [1 2 3 4 5])
+
+(defn step [track was]
+  (let [value (first (drop-while #(<= % was) track))]
+    (if value
+      value
+      (throw (Exception. "No room for advancement.")))))
+
+(defn advance [key]
+  (or ({:bid-multiplier (partial step bid-multiplier)} key) (partial step advancement)))
+
+(defn research-and-develop [player key]
+  (update-in player [:advancements key] (advance key)))
 
 (defn city []
-  (->City 1 '()))
+  (->City 1 nil))
 
-(def spot ->Spot)
+(defn spot [name number]
+  [name number])
 
 (defn to-id
   ([name number]
     (clojure.string/lower-case (clojure.string/replace (str name " " number) " " "-")))
-  ([spot]
-   (to-id (:name spot) (:number spot))))
+  ([[name number]]
+   (to-id name number)))
 
-(defn numbered [f spots]
-  (set (filter (fn [spot] (f (:number spot))) spots)))
+(defn numbered [spot]
+  (get spot 1))
+
+(defn named [spot]
+  (get spot 0))
+
+(defn only [f area]
+  (set
+    (filter
+      (fn [spot]
+        (f (numbered spot)))
+      area)))
 
 (defn area
   ([spots]
     (reduce
-      (fn [all spot] (clojure.set/union all (if (set? spot) spot #{spot})))
+      (fn [memo spot]
+        (clojure.set/union memo
+          (if (set? spot)
+            spot
+            #{spot})))
       #{}
       spots))
   ([name size]
@@ -245,7 +280,7 @@
 (def spaces (apply clojure.set/union (vals areas)))
 
 (defn terrain [spot]
-  (if (= "Ocean" (:name spot)) :water :land))
+  (if (= "Ocean" (named spot)) :water :land))
 
 (defn water? [spot]
   (= :water (terrain spot)))
@@ -253,7 +288,7 @@
 (defn land? [spot]
   (not (water? spot)))
 
-(def water-spots
+(def wet
   (partial filter water?))
 
 (defn edge [m from & tos]
@@ -404,16 +439,16 @@
   (city-card 0 sulawesi-utara bali java-tengah)
   (city-card 0 java-timur jawa-barat bali)
   (city-card 0 sumatera-selatan jawa-barat java-tengah)
-  (city-card 1 (numbered #{1 2 3} aceh) lampung maluku)
-  (city-card 1 (numbered #{1 2 3} aceh) (numbered #{1 2 3} sumatera-utara) benakulu)
-  (city-card 1 (numbered #{1 2 3} sumatera-utara) kalimatan-salatan (numbered #{1 2 3 4 5 8 9} maluku))
-  (city-card 1 (numbered #{1 2} sumatera-barat) lampung kalimatan-salatan)
-  (city-card 1 (numbered #{1 2} sumatera-barat) benakulu jawa-barat)
+  (city-card 1 (only #{1 2 3} aceh) lampung maluku)
+  (city-card 1 (only #{1 2 3} aceh) (only #{1 2 3} sumatera-utara) benakulu)
+  (city-card 1 (only #{1 2 3} sumatera-utara) kalimatan-salatan (only #{1 2 3 4 5 8 9} maluku))
+  (city-card 1 (only #{1 2} sumatera-barat) lampung kalimatan-salatan)
+  (city-card 1 (only #{1 2} sumatera-barat) benakulu jawa-barat)
   (city-card 2 halmahera papua musa-tenggara-barat)
-  (city-card 2 halmahera (numbered #{2 3 4 5 6} musa-tenggara-timur) jawa-barat)
+  (city-card 2 halmahera (only #{2 3 4 5 6} musa-tenggara-timur) jawa-barat)
   (city-card 2 sarawak sulawesi-tengah papua)
   (city-card 2 sarawak musa-tenggara-barat jambi)
-  (city-card 2 jambi sulawesi-tengah (numbered #{2 3 4 5 6} musa-tenggara-timur))])
+  (city-card 2 jambi sulawesi-tengah (only #{2 3 4 5 6} musa-tenggara-timur))])
 
 (defn- shuffle-city-cards [cards]
   (reduce-kv
@@ -442,9 +477,9 @@
       (->
         (areas name)
         adjacent
-        water-spots))))
+        wet))))
 
-(def deeds [
+(def deeds [ ;grouped by era
  [(deed "Halmahera" :spice)
   (deed "Maluku" :spice)
   (deed "Jawa Barat" :rice)
@@ -482,14 +517,15 @@
 
 (defn init
   ([open-money players]
-    (let [hand       (partial nth (-> city-cards shuffle-city-cards deal-city-cards))
+    (let [era        0
+          hand       (partial get (-> city-cards shuffle-city-cards deal-city-cards))
           turn-order (map-indexed
                        (fn [idx player]
                          (assoc player :city-cards (hand idx)))
-                       players)]
+                       (shuffle players))]
       (->Game
-        (->Board spaces edges {} (nth deeds 0) turn-order)
-        0
+        (->Board spaces edges {} (get deeds era) turn-order)
+        era
         open-money)))
   ([players]
     (init true players)))
