@@ -415,27 +415,24 @@
   (city-card 2 sarawak musa-tenggara-barat jambi)
   (city-card 2 jambi sulawesi-tengah (numbered #{2 3 4 5 6} musa-tenggara-timur))])
 
-(defn shuffle-city-cards [cards]
+(defn- shuffle-city-cards [cards]
   (reduce-kv
     (fn [m era cards]
       (assoc m era (shuffle cards)))
     {}
    (group-by :era cards)))
 
-(defn deal-city-cards [cards]
+(defn- deal-city-cards [cards]
   (partition 3
     (for [idx (range 0 5)
           era (range 0 3)]
       (get-in cards [era idx]))))
 
-(defn adjacent [spots]
+(defn adjacent [area]
   (remove
-    spots
+    area
     (apply clojure.set/union
-      (map
-        (fn [spot]
-          (edges spot))
-        spots))))
+      (map edges area))))
 
 (defn deed
   ([name piece]
