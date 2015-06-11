@@ -96,11 +96,16 @@
         (assoc player :city-cards (hand idx)))
       players)))
 
-(defn step [track was]
-  (let [value (first (drop-while #(<= % was) track))]
-    (if value
-      value
-      (throw (Exception. "No room for advancement.")))))
+(defn after [steps value]
+  (if value
+    (get steps (inc (.indexOf steps value)))
+    (first steps)))
+
+(defn around [steps value]
+  (or (after steps value) (first steps)))
+
+(defn step [steps value]
+  (or (after steps value) (throw (Exception. "No room for advancement."))))
 
 (defn advance [key]
   (or ({:bid-multiplier (partial step bid-multiplier)} key) (partial step advancement)))
