@@ -553,7 +553,7 @@
   :city-growth])
 
 (def board
-  (-> Board spaces edges {}))
+  (->Board spaces edges {}))
 
 (defn init
   ([open-money players]
