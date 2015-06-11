@@ -1,24 +1,100 @@
 (ns indo)
 
-(defrecord Game [board available-deeds turn-order era open-money])
-(defrecord Player [name color cash total-spent revenue slots advancements city-cards])
-(defrecord Board [spaces edges pieces])
-(defrecord City [size goods-delivered])
+;; TYPES
+
+(defrecord Game [components open-money era turn-order available-deeds])
+(defrecord Player [name color cash bank slots advancements city-cards])
+(defrecord Components [board city-cards deeds]) ;allows for the possibility of other maps
+(defrecord Board [areas edges spaces provinces pieces])
+(defrecord City [size delivered-goods]) ;TODO delivered-goods an event-sourced calculation?
 (defrecord CityCard [era area])
 (defrecord Company [deeds])
 (defrecord Deed [name piece era-maximums])
 (defrecord Ship [company])
 (defrecord Good [company])
 
+;; CONSTRUCTORS
+
 (def ship ->Ship)
 (def good ->Good)
 (def company ->Company)
+(def components ->Components)
+
+(defn board [areas edges]
+  (->Board areas edges (apply clojure.set/union (vals areas)) (dissoc areas "Ocean") {}))
 
 (defn player [name color]
-  (->Player name color 100 0 0 #{} {:slots 1 :mergers 1 :hull 1 :expansion 1 :bid-multiplier 1} nil))
+  (->Player name color 100 0 #{} {:slots 1 :mergers 1 :hull 1 :expansion 1 :bid-multiplier 1} nil))
+
+(defn city []
+  (->City 1 nil))
+
+(defn spot [name number]
+  [name number])
+
+(defn deed
+  ([name piece]
+    (deed name piece nil))
+  ([name piece era-maximums]
+    (->Deed name piece era-maximums)))
+
+(declare consolidate)
+(defn city-card [era & spots]
+  (->CityCard era (consolidate spots)))
+
+(declare deal-city-cards)
+(defn game
+  ([components players open-money]
+    (->Game
+      components
+      open-money
+      -1
+      (shuffle (deal-city-cards (:city-cards components) players))
+      []))
+  ([components players]
+    (game components players false)))
+
+;; METADATA
 
 (def bid-multiplier [1 5 25 100 400])
 (def advancement [1 2 3 4 5])
+(def phases [
+  :new-era
+  :bid-for-turn-order
+  :mergers
+  :aquisitions
+  :research-and-development
+  :operations
+  :city-growth])
+
+;; PURE FUNCTIONS
+
+(defn consolidate [spots] ;equivalent of flatten for areas/spots
+  (apply clojure.set/union
+    (map
+      (fn [spot]
+        (if (set? spot) spot #{spot}))
+      spots)))
+
+(defn- shuffle-city-cards [cards]
+  (reduce-kv
+    (fn [m era cards]
+      (assoc m era (shuffle cards)))
+    {}
+   (group-by :era cards)))
+
+(defn- make-hands [cards]
+  (partition 3
+    (for [idx (range 0 5)
+          era (range 0 3)]
+      (get-in cards [era idx]))))
+
+(defn deal-city-cards [cards players] ;TODO handle 2 players
+  (let [hand (partial get (-> cards shuffle-city-cards make-hands))]
+    (map-indexed
+      (fn [idx player]
+        (assoc player :city-cards (hand idx)))
+      players)))
 
 (defn step [track was]
   (let [value (first (drop-while #(<= % was) track))]
@@ -31,12 +107,6 @@
 
 (defn research-and-develop [player key]
   (update-in player [:advancements key] (advance key)))
-
-(defn city []
-  (->City 1 nil))
-
-(defn spot [name number]
-  [name number])
 
 (defn to-id
   ([name number]
@@ -57,28 +127,94 @@
         (f (numbered spot)))
       area)))
 
-(defn area
-  ([spots]
-    (apply clojure.set/union
-      (map
-        (fn [spot]
-          (if (set? spot) spot #{spot}))
-        spots)))
-  ([name size]
-    (area (map #(spot name %) (range 1 (inc size))))))
+(defn zone-area [name size]
+  (consolidate (map #(spot name %) (range 1 (inc size)))))
 
-(defn city-card [era & spots]
-  (->CityCard era (area spots)))
-
-(defn load-areas [sizes]
+(defn zone-areas [sizes]
   (reduce-kv
     (fn [m name size]
-      (assoc m name (area name size)))
+      (assoc m name (zone-area name size)))
     {}
     sizes))
 
+(defn terrain [spot]
+  (if (= "Ocean" (named spot)) :water :land))
+
+(defn water? [spot]
+  (= :water (terrain spot)))
+
+(defn land? [spot]
+  (not (water? spot)))
+
+(def wet
+  (partial filter water?))
+
+(def dry
+  (partial filter land?))
+
+(defn sea-port? [board spot]
+  (and (land? spot) (some water? (get-in board [:edges spot]))))
+
+(defn inland? [board spot]
+  (and (land? spot) (not-any? water? (get-in board [:edges spot]))))
+
+(defn inland [board]
+  (consolidate (filter (partial inland? board) (:spaces board))))
+
+(defn edge [m from & tos]
+  (assoc m from (consolidate tos)))
+
+(defn adjacent [board area]
+  (remove
+    area
+    (apply clojure.set/union
+      (map (:edges board) area))))
+
+(defn deed-types [deeds]
+  (set (map #(get % :piece) (flatten deeds))))
+
+(defn lacks-deeds? [deeds]
+  (<= (count (deed-types deeds)) 1))
+
+(defn capacity [spot]
+  (if (land? spot) 1 999))
+
+(defn pieces [board spot]
+  (get-in board [:pieces spot]))
+
+(defn room? [board spot]
+  (< (count (pieces board spot)) (capacity spot)))
+
+(defn room [board area]
+  (set (filter (partial room? board) area)))
+
+(defn seed-area [board deed] ;spots in which to seed the first piece of a company
+  (let [area  ((:areas board) (:name deed))
+        piece (:piece deed)
+        adj   (partial adjacent board)]
+    (if (= piece :ship)
+      (-> area adj wet)
+      area)))
+
+(defn valid-deed? [board deed]
+  (>
+    (count
+      (room board
+        (seed-area
+          board
+          deed)))
+    0))
+
+(defn valid-deeds [board deeds]
+  (filter (partial valid-deed? board) deeds))
+
+(defn new-era? [game]
+  (lacks-deeds? (get-in game [:board :available-deeds])))
+
+;; INDONESIA DATA
+
 (def areas
-  (load-areas {
+  (zone-areas {
     "Aceh" 4
     "Bali" 2
     "Benakulu" 3
@@ -273,36 +409,6 @@
 (def sumatera-utara (areas "Sumatera Utara"))
 (def ocean (areas "Ocean"))
 
-(def provinces (dissoc areas "Ocean"))
-(def spaces (apply clojure.set/union (vals areas)))
-
-(defn terrain [spot]
-  (if (= "Ocean" (named spot)) :water :land))
-
-(defn water? [spot]
-  (= :water (terrain spot)))
-
-(defn land? [spot]
-  (not (water? spot)))
-
-(def wet
-  (partial filter water?))
-
-(def dry
-  (partial filter land?))
-
-(defn sea-port? [board spot]
-  (and (land? spot) (some water? (get-in board [:edges spot]))))
-
-(defn inland? [board spot]
-  (and (land? spot) (not-any? water? (get-in board [:edges spot]))))
-
-(defn inland [board]
-  (area (filter (partial inland? board) (:spaces board))))
-
-(defn edge [m from & tos]
-  (assoc m from (area tos)))
-
 (def edges
   (-> {}
     (edge aceh-1 aceh-2 aceh-3 ocean-12)
@@ -459,31 +565,6 @@
   (city-card 2 sarawak musa-tenggara-barat jambi)
   (city-card 2 jambi sulawesi-tengah (only #{2 3 4 5 6} musa-tenggara-timur))])
 
-(defn- shuffle-city-cards [cards]
-  (reduce-kv
-    (fn [m era cards]
-      (assoc m era (shuffle cards)))
-    {}
-   (group-by :era cards)))
-
-(defn- deal-city-cards [cards]
-  (partition 3
-    (for [idx (range 0 5)
-          era (range 0 3)]
-      (get-in cards [era idx]))))
-
-(defn adjacent [board area]
-  (remove
-    area
-    (apply clojure.set/union
-      (map (:edges board) area))))
-
-(defn deed
-  ([name piece]
-    (deed name piece nil))
-  ([name piece era-maximums]
-    (->Deed name piece era-maximums)))
-
 (def deeds [ ;grouped by era
  [(deed "Halmahera" :spice)
   (deed "Maluku" :spice)
@@ -511,72 +592,5 @@
   (deed "Papua" :rubber)
   (deed "Maluku" :oil)]])
 
-(defn deed-types [deeds]
-  (set (map #(get % :piece) (flatten deeds))))
-
-(defn lacks-deeds? [deeds]
-  (<= (count (deed-types deeds)) 1))
-
-(defn capacity [spot]
-  (if (land? spot) 1 999))
-
-(defn pieces [board spot]
-  (get-in board [:pieces spot]))
-
-(defn room? [board spot]
-  (< (count (pieces board spot)) (capacity spot)))
-
-(defn room [board area]
-  (set (filter (partial room? board) area)))
-
-(defn seed-area [board deed]
-  (let [area  (areas (:name deed))
-        piece (:piece deed)
-        adj   (partial adjacent board)]
-    (if (= piece :ship)
-      (-> area adj wet)
-      area)))
-
-(defn valid-deed? [board deed]
-  (>
-    (count
-      (room board
-        (seed-area
-          board
-          deed)))
-    0))
-
-(defn valid-deeds [board deeds]
-  (filter (partial valid-deed? board) deeds))
-
-(defn new-era? [game]
-  (lacks-deeds? (get-in game [:board :available-deeds])))
-
-(def phases [
-  :new-era
-  :bid-for-turn-order
-  :mergers
-  :aquisitions
-  :research-and-development
-  :operations
-  :city-growth])
-
-(def board
-  (->Board spaces edges {}))
-
-(defn init
-  ([open-money players]
-    (let [era        0
-          hand       (partial get (-> city-cards shuffle-city-cards deal-city-cards))
-          turn-order (map-indexed
-                       (fn [idx player]
-                         (assoc player :city-cards (hand idx)))
-                       (shuffle players))]
-      (->Game
-        board
-        (get deeds era)
-        turn-order
-        era
-        open-money)))
-  ([players]
-    (init true players)))
+(def indonesia
+  (components (board areas edges) city-cards deeds))
