@@ -288,6 +288,18 @@
 (def wet
   (partial filter water?))
 
+(def dry
+  (partial filter land?))
+
+(defn sea-port? [board spot]
+  (and (land? spot) (some water? (get-in board [:edges spot]))))
+
+(defn inland? [board spot]
+  (and (land? spot) (not-any? water? (get-in board [:edges spot]))))
+
+(defn inland [board]
+  (area (filter (partial inland? board) (:spaces board))))
+
 (defn edge [m from & tos]
   (assoc m from (area tos)))
 
@@ -465,9 +477,6 @@
     area
     (apply clojure.set/union
       (map (:edges board) area))))
-
-(defn water-access? [board spot] ;cities need water access
-  (some water? (get-in board [:edges spot])))
 
 (defn deed
   ([name piece]
