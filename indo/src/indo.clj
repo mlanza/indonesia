@@ -506,6 +506,33 @@
   (deed "Papua" :rubber)
   (deed "Maluku" :oil)]])
 
+(defn deed-types [deeds]
+  (set (map #(get % :piece) (flatten deeds))))
+
+(defn lacks-deeds? [deeds]
+  (<= (count (deed-types deeds)) 1))
+
+(defn capacity [spot]
+  (if (land? spot) 1 999))
+
+(defn pieces [board spot]
+  (get-in board [:pieces spot]))
+
+(defn room? [board spot]
+  (< (count (pieces board spot)) (capacity spot)))
+
+(defn room [board area]
+  (set (filter (partial room? board) area)))
+
+(defn valid-deed? [board deed]
+  (> (count (room board (:area deed))) 0))
+
+(defn valid-deeds [board deeds]
+  (filter (partial valid-deed? board) deeds))
+
+(defn new-era? [game]
+  (lacks-deeds? (get-in game [:board :available-deeds])))
+
 (def phases [
   :new-era
   :bid-for-turn-order
