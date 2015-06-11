@@ -14,8 +14,8 @@
 
 (refer 'indo)
 
-(defn sample []
-  (init [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
+(def sample
+  (partial game indonesia [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
 
 (def system (atom nil))
 
