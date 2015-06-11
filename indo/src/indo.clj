@@ -214,7 +214,26 @@
   (filter (partial valid-deed? board) deeds))
 
 (defn new-era? [game]
-  (lacks-deeds? (get-in game [:board :available-deeds])))
+  (lacks-deeds? (get-in game [:available-deeds])))
+
+(defn inc-era [game]
+  (update-in game [:era] inc))
+
+(defn deal-era-deeds [game]
+  (let [era (:era game)
+        deeds (get-in game [:components :deeds])
+        new-deeds (get deeds era)]
+    (update-in game [:available-deeds]
+      (fn [available-deeds]
+        (concat available-deeds new-deeds)))))
+
+(defn update-cond [game pred f]
+  (if (pred game) (f game) game))
+
+(defn new-era [game]
+  (-> game
+    (update-in [:available-deeds] (partial valid-deeds (:board game))) ;eliminate invalid deeds
+    (update-cond new-era? (comp deal-era-deeds inc-era))))
 
 ;; INDONESIA DATA
 
