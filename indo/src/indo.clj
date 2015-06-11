@@ -4,7 +4,7 @@
 
 (defrecord Game [components open-money era turn-order available-deeds])
 (defrecord Player [name color cash bank slots advancements city-cards])
-(defrecord Components [board city-cards deeds]) ;allows for the possibility of other maps
+(defrecord Components [board city-cards deeds city-limits]) ;allows for the possibility of other maps
 (defrecord Board [areas edges spaces provinces pieces])
 (defrecord City [size delivered-goods]) ;TODO delivered-goods an event-sourced calculation?
 (defrecord CityCard [era area])
@@ -76,24 +76,25 @@
         (if (set? spot) spot #{spot}))
       spots)))
 
-(defn- shuffle-city-cards [cards]
+(defn shuffle-city-cards [cards]
   (reduce-kv
     (fn [m era cards]
       (assoc m era (shuffle cards)))
     {}
    (group-by :era cards)))
 
-(defn- make-hands [cards]
+(defn make-hands [cards]
   (partition 3
     (for [idx (range 0 5)
           era (range 0 3)]
       (get-in cards [era idx]))))
 
 (defn deal-city-cards [cards players] ;TODO handle 2 players
-  (let [hand (partial get (-> cards shuffle-city-cards make-hands))]
+  (let [deal (comp vec make-hands shuffle-city-cards)
+        hands (deal cards)]
     (map-indexed
       (fn [idx player]
-        (assoc player :city-cards (hand idx)))
+        (assoc player :city-cards (get hands idx)))
       players)))
 
 (defn after [steps value]
@@ -234,6 +235,36 @@
   (-> game
     (update-in [:available-deeds] (partial valid-deeds (:board game))) ;eliminate invalid deeds
     (update-cond new-era? (comp deal-era-deeds inc-era))))
+
+(defn has-city-card? [player city-card]
+  (some #(= % city-card) (:city-cards player)))
+
+(defn has-spot? [city-card spot]
+  (some #(= % spot) (:area city-card)))
+
+(defn vacant? [board spot]
+  (not (pieces board spot)))
+
+(def city?
+  (partial instance? City))
+
+(defn city-available? [size game]
+  (let [city-limits (get-in game [:components :city-limits])
+        limit (city-limits size)
+        cities (filter
+                 (fn [piece]
+                   (and (city? piece) (= (:size piece) size)))
+                 (get-in game [:components :board :pieces]))
+        used (count cities)]
+    (< used limit)))
+
+(defn place-city [game player city-card spot]
+  (cond
+    (not (has-city-card? player city-card)) (throw (Exception. "Card not available."))
+    (not (has-spot? city-card spot)) (throw (Exception. "Spot not on card."))
+    (not (vacant? (get-in game [:components :board]))) (throw (Exception. "Spot occupied."))
+    (not (city-available? 1 game)) (throw (Exception. "No green cities available."))
+    :else (assoc-in game [:components :board :pieces] (city))))
 
 ;; INDONESIA DATA
 
@@ -617,4 +648,4 @@
   (deed "Maluku" :oil)]])
 
 (def indonesia
-  (components (board areas edges) city-cards deeds))
+  (components (board areas edges) city-cards deeds {1 12 2 8 3 3}))
