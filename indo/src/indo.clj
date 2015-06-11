@@ -1,12 +1,12 @@
 (ns indo)
 
-(defrecord Game [board era open-money])
+(defrecord Game [board available-deeds turn-order era open-money])
 (defrecord Player [name color cash total-spent revenue slots advancements city-cards])
-(defrecord Board [spaces edges pieces available-deeds turn-order-track])
+(defrecord Board [spaces edges pieces])
 (defrecord City [size goods-delivered])
 (defrecord CityCard [era area])
 (defrecord Company [deeds])
-(defrecord Deed [name piece era-maximums area])
+(defrecord Deed [name piece era-maximums])
 (defrecord Ship [company])
 (defrecord Good [company])
 
@@ -59,14 +59,11 @@
 
 (defn area
   ([spots]
-    (reduce
-      (fn [memo spot]
-        (clojure.set/union memo
-          (if (set? spot)
-            spot
-            #{spot})))
-      #{}
-      spots))
+    (apply clojure.set/union
+      (map
+        (fn [spot]
+          (if (set? spot) spot #{spot}))
+        spots)))
   ([name size]
     (area (map #(spot name %) (range 1 (inc size))))))
 
@@ -463,21 +460,20 @@
           era (range 0 3)]
       (get-in cards [era idx]))))
 
-(defn adjacent [area]
+(defn adjacent [board area]
   (remove
     area
     (apply clojure.set/union
-      (map edges area))))
+      (map (:edges board) area))))
+
+(defn water-access? [board spot] ;cities need water access
+  (some water? (get-in board [:edges spot])))
 
 (defn deed
   ([name piece]
-    (->Deed name piece nil (areas name)))
+    (deed name piece nil))
   ([name piece era-maximums]
-    (->Deed name piece era-maximums
-      (->
-        (areas name)
-        adjacent
-        wet))))
+    (->Deed name piece era-maximums)))
 
 (def deeds [ ;grouped by era
  [(deed "Halmahera" :spice)
@@ -524,8 +520,22 @@
 (defn room [board area]
   (set (filter (partial room? board) area)))
 
+(defn seed-area [board deed]
+  (let [area  (areas (:name deed))
+        piece (:piece deed)
+        adj   (partial adjacent board)]
+    (if (= piece :ship)
+      (-> area adj wet)
+      area)))
+
 (defn valid-deed? [board deed]
-  (> (count (room board (:area deed))) 0))
+  (>
+    (count
+      (room board
+        (seed-area
+          board
+          deed)))
+    0))
 
 (defn valid-deeds [board deeds]
   (filter (partial valid-deed? board) deeds))
@@ -542,6 +552,9 @@
   :operations
   :city-growth])
 
+(def board
+  (-> Board spaces edges {}))
+
 (defn init
   ([open-money players]
     (let [era        0
@@ -551,7 +564,9 @@
                          (assoc player :city-cards (hand idx)))
                        (shuffle players))]
       (->Game
-        (->Board spaces edges {} (get deeds era) turn-order)
+        board
+        (get deeds era)
+        turn-order
         era
         open-money)))
   ([players]
