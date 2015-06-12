@@ -15,7 +15,11 @@
 (refer 'indo)
 
 (def sample
-  (partial game indonesia [(player "Mario" :white) (player "Rick" :black) (player "Sean" :green) (player "Steve" :yellow)]))
+  (partial game indonesia {
+    "Mario" (player :white)
+    "Rick"  (player :black)
+    "Sean"  (player :green)
+    "Steve" (player :yellow)}))
 
 (def system (atom nil))
 
