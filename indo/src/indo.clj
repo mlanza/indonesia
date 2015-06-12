@@ -2,8 +2,8 @@
 
 ;; TYPES
 
-(defrecord Game [components open-money era turn-order available-deeds])
-(defrecord Player [name color cash bank slots advancements city-cards])
+(defrecord Game [components players open-money turn-order era available-deeds])
+(defrecord Player [color cash bank slots advancements city-cards])
 (defrecord Components [board city-cards deeds city-limits]) ;allows for the possibility of other maps
 (defrecord Board [areas edges spaces provinces pieces])
 (defrecord City [size delivered-goods]) ;TODO delivered-goods an event-sourced calculation?
@@ -23,8 +23,8 @@
 (defn board [areas edges]
   (->Board areas edges (apply clojure.set/union (vals areas)) (dissoc areas "Ocean") {}))
 
-(defn player [name color]
-  (->Player name color 100 0 #{} {:slots 1 :mergers 1 :hull 1 :expansion 1 :bid-multiplier 1} nil))
+(defn player [color]
+  (->Player color 100 0 #{} {:slots 1 :mergers 1 :hull 1 :expansion 1 :bid-multiplier 1} nil))
 
 (defn city []
   (->City 1 nil))
@@ -47,9 +47,10 @@
   ([components players open-money]
     (->Game
       components
+      (deal-city-cards (:city-cards components) players)
       open-money
+      (shuffle (keys players))
       -1
-      (shuffle (deal-city-cards (:city-cards components) players))
       []))
   ([components players]
     (game components players false)))
@@ -89,13 +90,35 @@
           era (range 0 3)]
       (get-in cards [era idx]))))
 
-(defn deal-city-cards [cards players] ;TODO handle 2 players
+(defn reduce-indexed
+  "Reduce while adding an index as the second argument to the function"
+  ([f coll]
+    (reduce-indexed f (first coll) 0 (rest coll)))
+  ([f init coll]
+    (reduce-indexed f init 0 coll))
+  ([f init i coll]
+    (if (empty? coll)
+      init
+      (let [v (first coll)
+            fv (f init i v)]
+        (recur f fv (inc i) (rest coll))))))
+
+(defn update-players [f players]
+  (reduce-indexed
+    (fn [memo idx [player-name player]]
+      (assoc memo player-name (f player idx)))
+    {}
+    players))
+
+(defn deal-city-cards [cards players]
   (let [deal (comp vec make-hands shuffle-city-cards)
-        hands (deal cards)]
-    (map-indexed
-      (fn [idx player]
-        (assoc player :city-cards (get hands idx)))
-      players)))
+        hands (deal cards)
+        f (if (= (count players) 2)
+            (fn [player idx]
+              (assoc player :city-cards (flatten (concat (get hands idx) (get hands (+ idx 2))))))
+            (fn [player idx]
+              (assoc player :city-cards (get hands idx))))]
+    (update-players f players)))
 
 (defn after [steps value]
   (if value
@@ -242,9 +265,6 @@
 (defn has-spot? [city-card spot]
   (some #(= % spot) (:area city-card)))
 
-(defn vacant? [board spot]
-  (not (pieces board spot)))
-
 (def city?
   (partial instance? City))
 
@@ -258,13 +278,28 @@
         used (count cities)]
     (< used limit)))
 
-(defn place-city [game player city-card spot]
+(def starter-city-available?
+  (partial city-available? 1))
+
+(defn put-piece [game spot piece]
+  (let [board (get-in game [:components :board])]
+    (if (not (room? board spot))
+      (throw (Exception. "Spot unavailable."))
+      (update-in game [:components :board :pieces spot]
+        (fn [pieces]
+          (cons piece pieces))))))
+
+;TODO in general the args of functions should reflect what users would want to see in an action journal
+(defn place-city [game player-name city-card spot]
+  (let [player (get-in game [:players player-name])]
   (cond
     (not (has-city-card? player city-card)) (throw (Exception. "Card not available."))
-    (not (has-spot? city-card spot)) (throw (Exception. "Spot not on card."))
-    (not (vacant? (get-in game [:components :board]))) (throw (Exception. "Spot occupied."))
-    (not (city-available? 1 game)) (throw (Exception. "No green cities available."))
-    :else (assoc-in game [:components :board :pieces] (city))))
+    (not (has-spot? city-card spot))        (throw (Exception. "Spot not on card."))
+    (not (starter-city-available? game))    (throw (Exception. "No starter cities available."))
+    :else (-> game
+            (put-piece spot (city))
+            (update-in [:players player-name :city-cards]
+              (fn [city-cards] (remove (partial = city-card) city-cards)))))))
 
 ;; INDONESIA DATA
 
