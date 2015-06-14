@@ -293,38 +293,51 @@
 (def not-nil?
   (complement nil?))
 
-;(defn validate [validations & args]
-;  (filter not-nil?
-;    (for [validations [valid? issue]]
-;      (when (not (apply valid? args)) issue))))
-
 (defn valid-city-spot? [board spot]
   (and (sea-port? board spot) (room? board spot)))
 
 (defn valid-city-spots [board area]
   (filter (partial valid-city-spot? board) area))
 
-;TODO in general the args of functions should reflect what users would want to see in an action journal
-(defn place-city [game player-name city-card spot]
+(defn validate-either [v f]
+  (fn [& args]
+    (let [message (apply v args)]
+      (if message
+        [message]
+        [nil (apply f args)]))))
+
+(defn validate [v f]
+  (fn [& args]
+    (let [message (apply v args)]
+      (if message
+        (throw (Exception. message))
+        (apply f args)))))
+
+(defn place-city? [game player-name city-card spot]
   (let [player  (get-in game [:players player-name])
         board   (get-in game [:components :board])
         starter (starter-city-available? game)
         pass    (nil? spot)
         play    (not pass)
-        valid-spots (valid-city-spots board (:area city-card))
-        effect  (if play (fn [game] (put-piece game spot (city))) identity)]
-  (cond
-    (not (has-city-card? player city-card))       (throw (Exception. "Card not in hand."))
-    (and pass starter (not (empty? valid-spots))) (throw (Exception. "Cannot pass when a play is legal."))
-    (and play (not (has-spot? city-card spot)))   (throw (Exception. "Spot not on card."))
-    (and play (not (sea-port? board spot)))       (throw (Exception. "Not a sea port."))
-    (and play (not (room? board spot)))           (throw (Exception. "No room."))
-    (and play (not starter))                      (throw (Exception. "No starter cities available."))
-    :else
+        valid-spots (valid-city-spots board (:area city-card))]
+    (cond
+      (not (has-city-card? player city-card))       "Card not in hand."
+      (and pass starter (not (empty? valid-spots))) "Cannot pass when a play is legal."
+      (and play (not (has-spot? city-card spot)))   "Spot not on card."
+      (and play (not (sea-port? board spot)))       "Not a sea port."
+      (and play (not (room? board spot)))           "No room."
+      (and play (not starter))                      "No starter cities available.")))
+
+;TODO in general the args of functions should reflect what users would want to see in an action journal
+(defn place-city* [game player-name city-card spot]
+  (let [effect (if spot (fn [game] (put-piece game spot (city))) identity)]
     (-> game
       effect
       (update-in [:players player-name :city-cards]
-        (fn [city-cards] (remove (partial = city-card) city-cards)))))))
+        (fn [city-cards] (remove (partial = city-card) city-cards))))))
+
+(def place-city
+  (validate place-city? place-city*))
 
 ;; INDONESIA DATA
 
