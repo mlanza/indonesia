@@ -2,7 +2,7 @@
 
 ;; TYPES
 
-(defrecord Game [components players open-money phase turn-order era available-deeds])
+(defrecord Game [components players open-money phase turn-order era available-deeds actions])
 (defrecord Player [color cash bank slots advancements city-cards])
 (defrecord Components [board city-cards deeds city-limits]) ;allows for the possibility of other maps
 (defrecord Board [areas edges spaces provinces pieces])
@@ -52,6 +52,7 @@
       nil
       (shuffle (keys players))
       -1
+      []
       []))
   ([components players]
     (game components players false)))
@@ -282,13 +283,10 @@
 (def starter-city-available?
   (partial city-available? 1))
 
-(defn put-piece [game spot piece]
-  (let [board (get-in game [:components :board])]
-    (if (not (room? board spot))
-      (throw (Exception. "Spot unavailable."))
-      (update-in game [:components :board :pieces spot]
-        (fn [pieces]
-          (cons piece pieces))))))
+(defn put-piece [piece spot game]
+  (update-in game [:components :board :pieces spot]
+    (fn [pieces]
+      (cons piece pieces))))
 
 (def not-nil?
   (complement nil?))
@@ -306,12 +304,16 @@
         [message]
         [nil (apply f args)]))))
 
-(defn validate [v f]
-  (fn [& args]
-    (let [message (apply v args)]
+(defn action [key v f]
+  (fn [game player-name & args]
+    (let [message (apply v game player-name args)]
       (if message
         (throw (Exception. message))
-        (apply f args)))))
+        (update-in
+          (apply f game player-name args)
+          [:actions]
+          conj
+          (into [] (concat [key player-name] (vec args))))))))
 
 (defn place-city? [game player-name city-card spot]
   (let [player  (get-in game [:players player-name])
@@ -328,16 +330,17 @@
       (and play (not (room? board spot)))           "No room."
       (and play (not starter))                      "No starter cities available.")))
 
+;TODO verify turn order of player actions
 ;TODO in general the args of functions should reflect what users would want to see in an action journal
 (defn place-city* [game player-name city-card spot]
-  (let [effect (if spot (fn [game] (put-piece game spot (city))) identity)]
+  (let [effect (if spot (partial put-piece (city) spot) identity)]
     (-> game
       effect
       (update-in [:players player-name :city-cards]
         (fn [city-cards] (remove (partial = city-card) city-cards))))))
 
 (def place-city
-  (validate place-city? place-city*))
+  (action :place-city place-city? place-city*))
 
 ;; INDONESIA DATA
 
