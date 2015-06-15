@@ -246,12 +246,8 @@
   (update-in game [:era] inc))
 
 (defn deal-era-deeds [game]
-  (let [era (:era game)
-        deeds (get-in game [:components :deeds])
-        new-deeds (get deeds era)]
-    (update-in game [:available-deeds]
-      (fn [available-deeds]
-        (concat available-deeds new-deeds)))))
+  (assoc-in game [:available-deeds]
+    (get-in game [:components :deeds (:era game)])))
 
 (defn update-cond [game pred f]
   (if (pred game) (f game) game))
@@ -341,6 +337,23 @@
 
 (def place-city
   (action :place-city place-city? place-city*))
+
+(defn bid-turn? [game player-name bid]
+  (let [player  (get-in game [:players player-name])
+        bid-multiplier (get-in player [:advancements :bid-multiplier])
+        cash (:cash player)]
+    (cond
+      (not= 0 (rem bid bid-multiplier)) "Bid not divisible by multiplier."
+      (< bid 0)                         "Bid must be positive."
+      (> bid cash)                      "Bid more than available cash.")))
+
+(defn bid-turn* [game player-name bid]
+  (-> game
+    (update-in [:players player-name :cash] #(- % bid))
+    (update-in [:players player-name :bank] #(+ % bid))))
+
+(def bid-turn
+  (action :bid-turn bid-turn? bid-turn*))
 
 ;; INDONESIA DATA
 
