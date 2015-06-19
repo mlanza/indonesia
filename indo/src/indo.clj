@@ -1,16 +1,17 @@
-(ns indo)
+(ns indo
+  (:refer-clojure :exclude [assert]))
 
 (defprotocol Story
-  (state [this statement])
+  (assert [this statement])
   (anticipate [this]))
 
 (defprotocol Statement
-  (balk [this story])) ;any objections?
+  (refute [this story])) ;any objections?
 
 (defrecord Session [components statements]
   Story
-  (state [this statement]
-    (let [error (balk statement this)]
+  (assert [this statement]
+    (let [error (refute statement this)]
       (if error
         (throw (Exception. error))
         (update-in this [:statements] conj statement))))
@@ -21,7 +22,7 @@
 
 (defrecord Seat [players open-cash]
   Statement
-  (balk [this session]))
+  (refute [this session]))
 (defn seat
   ([players open-cash]
     (->Seat players open-cash))
@@ -30,17 +31,17 @@
 
 (defrecord Deal [hands]
   Statement
-  (balk [this session]))
+  (refute [this session]))
 (def deal ->Deal)
 
 (defrecord TurnOrder [players]
   Statement
-  (balk [this session]))
+  (refute [this session]))
 (def turn-order ->TurnOrder)
 
 (defrecord Era [label]
   Statement
-  (balk [this session]))
+  (refute [this session]))
 (def era ->Era)
 
 (defn hand [& cards]
@@ -48,8 +49,8 @@
 
 (def session
   (-> empty-session
-    (state (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
-    (state (deal {"Mario" (hand) "Rick" (hand) "Sean" (hand) "Steve" (hand)}))
-    (state (turn-order ["Rick" "Sean" "Steve" "Mario"]))
-    (state (era \A))
+    (assert (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
+    (assert (deal {"Mario" (hand) "Rick" (hand) "Sean" (hand) "Steve" (hand)}))
+    (assert (turn-order ["Rick" "Sean" "Steve" "Mario"]))
+    (assert (era \A))
     ))
