@@ -13,7 +13,7 @@
    [indo]))
 
 (refer 'indo)
-
+(comment
 (def sample
   (partial game indonesia {
     "Mario" (player :white)
@@ -27,3 +27,4 @@
   (reset! system (sample)))
 
 (start)
+)
