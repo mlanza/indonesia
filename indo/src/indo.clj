@@ -1,9 +1,9 @@
 (ns indo
+  (require [story])
   (:refer-clojure :exclude [assert]))
 
 ;; TYPES
 
-(defrecord Game [components players open-money phase turn-order era available-deeds actions])
 (defrecord Player [color cash bank slots advancements city-cards])
 (defrecord Components [board city-cards deeds city-limits]) ;allows for the possibility of other maps
 (defrecord Board [areas edges spaces provinces pieces])
@@ -44,7 +44,8 @@
   (->CityCard era (consolidate spots)))
 
 (declare deal-city-cards)
-(defn game
+(comment
+(defn game1
   ([components players open-money]
     (->Game
       components
@@ -56,7 +57,8 @@
       []
       []))
   ([components players]
-    (game components players false)))
+    (game1 components players false)))
+)
 
 ;; METADATA
 
@@ -737,35 +739,37 @@
   (deed "Papua" :rubber)
   (deed "Maluku" :oil)]])
 
-(def indonesia
-  (components (board areas edges) city-cards deeds {1 12 2 8 3 3}))
-
-(defprotocol Story
-  (assert [this statement])
-  (consequent [this]))
-
-(defprotocol Statement
-  (refute [this story]) ;any objections?
-  (fold [this config state]))
-
-(defrecord Session [config state story]
-  Story
+(defrecord Game [components players open-money phase turn-order era available-deeds statements]
+  story/Story
   (assert [this statement]
-    (let [error (refute statement this)]
+    (let [error (story/refute statement this)]
       (if error
         (throw (Exception. error))
-        (-> this
-          (update-in [:state] (partial fold statement config))
-          (update-in [:story] conj statement)))))
+        (-> (story/fold statement this)
+          (update-in [:statements] conj statement)))))
   (consequent [this])) ;(last (:statements this))
 
-(def empty-session
-  (->Session nil nil []))
+(defn game [components]
+  (->Game components {} false nil nil nil #{} []))
+
+(def indonesia
+  (game (components (board areas edges) city-cards deeds {1 12 2 8 3 3})))
+
+(defn map-kv [f m]
+  (into {} (for [[key val] m] [key (f val)])))
 
 (defrecord Seat [players open-cash]
-  Statement
-  (refute [this session])
-  (fold [this config state] state))
+  story/Statement
+  (story/refute [_ game]
+    (let [seats (count (keys players))
+          colors (vals players)]
+      (cond
+        (or (< seats 2) (> seats 5))                    "This game seats 2-5 players."
+        (not= (count (into #{} colors)) (count colors)) "Each player must choose a unique color.")))
+  (story/fold [_ game]
+    (-> game
+      (assoc :players (map-kv player players))
+      (assoc :open-cash open-cash))))
 (defn seat
   ([players open-cash]
     (->Seat players open-cash))
@@ -773,30 +777,32 @@
     (seat players false)))
 
 (defrecord Deal [hands]
-  Statement
-  (refute [this session])
-  (fold [this config state] state))
-(def deal ->Deal)
+  story/Statement
+  (story/refute [this game])
+  (story/fold [_ game] game))
+    ;(update-in game [:players] (partial deal-city-cards (:city-cards components)))))
+(defn deal [hands]
+  (->Deal hands))
 
 (defrecord TurnOrder [players]
-  Statement
-  (refute [this session])
-  (fold [this config state] state))
+  story/Statement
+  (story/refute [this game])
+  (story/fold [this game] game))
 (def turn-order ->TurnOrder)
 
 (defrecord Era [label]
-  Statement
-  (refute [this session])
-  (fold [this config state] state))
+  story/Statement
+  (story/refute [this game])
+  (story/fold [this game] game))
 (def era ->Era)
 
 (defn hand [& cards]
   (into #{} cards))
 
 (def session
-  (-> empty-session
-    (assert (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
-    (assert (deal {"Mario" (hand) "Rick" (hand) "Sean" (hand) "Steve" (hand)}))
-    (assert (turn-order ["Rick" "Sean" "Steve" "Mario"]))
-    (assert (era \A))
+  (-> indonesia
+    (story/add seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"})
+    (story/add deal {"Mario" (hand) "Rick" (hand) "Sean" (hand) "Steve" (hand)})
+    (story/add turn-order ["Rick" "Sean" "Steve" "Mario"])
+    (story/add era \A)
     ))
