@@ -43,23 +43,6 @@
 (defn city-card [era & spots]
   (->CityCard era (consolidate spots)))
 
-(declare deal-city-cards)
-(comment
-(defn game1
-  ([components players open-money]
-    (->Game
-      components
-      (deal-city-cards (:city-cards components) players)
-      open-money
-      nil
-      (shuffle (keys players))
-      -1
-      []
-      []))
-  ([components players]
-    (game1 components players false)))
-)
-
 ;; METADATA
 
 (def bid-multiplier [1 5 25 100 400])
@@ -115,15 +98,8 @@
     {}
     players))
 
-(defn deal-city-cards [cards players]
-  (let [deal (comp vec make-hands shuffle-city-cards)
-        hands (deal cards)
-        f (if (= (count players) 2)
-            (fn [player idx]
-              (assoc player :city-cards (flatten (concat (get hands idx) (get hands (+ idx 2))))))
-            (fn [player idx]
-              (assoc player :city-cards (get hands idx))))]
-    (update-players f players)))
+(def deal-hands
+  (comp vec make-hands shuffle-city-cards))
 
 (defn after [steps value]
   (if value
@@ -739,22 +715,6 @@
   (deed "Papua" :rubber)
   (deed "Maluku" :oil)]])
 
-(defrecord Game [components players open-money phase turn-order era available-deeds statements]
-  story/Story
-  (assert [this statement]
-    (let [error (story/refute statement this)]
-      (if error
-        (throw (Exception. error))
-        (-> (story/fold statement this)
-          (update-in [:statements] conj statement)))))
-  (consequent [this])) ;(last (:statements this))
-
-(defn game [components]
-  (->Game components {} false nil nil nil #{} []))
-
-(def indonesia
-  (game (components (board areas edges) city-cards deeds {1 12 2 8 3 3})))
-
 (defn map-kv [f m]
   (into {} (for [[key val] m] [key (f val)])))
 
@@ -779,30 +739,62 @@
 (defrecord Deal [hands]
   story/Statement
   (story/refute [this game])
-  (story/fold [_ game] game))
-    ;(update-in game [:players] (partial deal-city-cards (:city-cards components)))))
-(defn deal [hands]
-  (->Deal hands))
+  (story/fold [_ game]
+    (let [players (:players game)
+          f (if (= (count players) 2)
+              (fn [player idx]
+                (assoc player :city-cards (flatten (concat (get hands idx) (get hands (+ idx 2))))))
+              (fn [player idx]
+                (assoc player :city-cards (get hands idx))))]
+      (assoc game :players (update-players f players)))))
+(defn deal
+  ([hands]
+    (->Deal hands))
+  ([]
+    #(deal (deal-hands (get-in % [:components :city-cards])))))
 
 (defrecord TurnOrder [players]
   story/Statement
   (story/refute [this game])
-  (story/fold [this game] game))
-(def turn-order ->TurnOrder)
+  (story/fold [_ game]
+    (assoc game :turn-order players)))
+(defn turn-order
+  ([players]
+    (->TurnOrder players))
+  ([]
+    #(turn-order (vec (shuffle (keys (:players %)))))))
+
+(def turn-order?
+  #(instance? TurnOrder %))
 
 (defrecord Era [label]
   story/Statement
   (story/refute [this game])
-  (story/fold [this game] game))
+  (story/fold [_ game]
+    (assoc game :era label)))
 (def era ->Era)
 
-(defn hand [& cards]
-  (into #{} cards))
+(defrecord Game [components players open-money phase turn-order era available-deeds statements]
+  story/Story
+  (story/assert [this statement]
+    (let [error (story/refute statement this)]
+      (if error
+        (throw (Exception. error))
+        (-> (story/fold statement this)
+          (update-in [:statements] conj statement)))))
+  (story/consequent [_]
+    (when (turn-order? (last statements))
+      (->Era \A))))
+
+(defn game [components]
+  (->Game components {} false nil nil nil #{} []))
+
+(def indonesia
+  (game (components (board areas edges) city-cards deeds {1 12 2 8 3 3})))
 
 (def session
   (-> indonesia
-    (story/add seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"})
-    (story/add deal {"Mario" (hand) "Rick" (hand) "Sean" (hand) "Steve" (hand)})
-    (story/add turn-order ["Rick" "Sean" "Steve" "Mario"])
-    (story/add era \A)
-    ))
+    (story/add (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
+    (story/add (deal))
+    (story/add (turn-order))))
+    ;(story/add (era \A)))) ;yield era to story?

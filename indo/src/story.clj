@@ -9,5 +9,8 @@
   (refute [this story]) ;any objections? silence indicates none
   (fold [this story]))
 
-(defn add [story f & args]
-  (assert story (apply f args)))
+(defn add [story statement]
+  (assert story
+    (if (clojure.test/function? statement)
+      (statement story) ;yield to some indeterminate outcome
+      statement)))
