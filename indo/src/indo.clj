@@ -738,7 +738,9 @@
 
 (defrecord Deal [hands]
   story/Statement
-  (story/refute [this game])
+  (story/refute [this game]
+    (when (nil? hands)
+      #(->Deal (deal-hands (get-in % [:components :city-cards])))))
   (story/fold [_ game]
     (let [players (:players game)
           f (if (= (count players) 2)
@@ -751,18 +753,20 @@
   ([hands]
     (->Deal hands))
   ([]
-    #(deal (deal-hands (get-in % [:components :city-cards])))))
+    (deal nil)))
 
 (defrecord TurnOrder [players]
   story/Statement
-  (story/refute [this game])
+  (story/refute [this game]
+    (when (nil? players)
+      #(->TurnOrder (vec (shuffle (keys (:players %)))))))
   (story/fold [_ game]
     (assoc game :turn-order players)))
 (defn turn-order
   ([players]
     (->TurnOrder players))
   ([]
-    #(turn-order (vec (shuffle (keys (:players %)))))))
+    (turn-order nil)))
 
 (def turn-order?
   #(instance? TurnOrder %))
@@ -777,11 +781,15 @@
 (defrecord Game [components players open-money phase turn-order era available-deeds statements]
   story/Story
   (story/assert [this statement]
-    (let [error (story/refute statement this)]
-      (if error
-        (throw (Exception. error))
-        (-> (story/fold statement this)
-          (update-in [:statements] conj statement)))))
+    (let [refutation (story/refute statement this)]
+      (cond
+        (clojure.test/function? refutation)
+          (story/assert this (refutation this))
+        (string? refutation)
+          (throw (Exception. refutation))
+        :else
+          (-> (story/fold statement this)
+            (update-in [:statements] conj statement)))))
   (story/consequent [_]
     (when (turn-order? (last statements))
       (->Era \A))))
@@ -794,7 +802,7 @@
 
 (def session
   (-> indonesia
-    (story/add (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
-    (story/add (deal))
-    (story/add (turn-order))))
-    ;(story/add (era \A)))) ;yield era to story?
+    (story/assert (seat {"Mario" "white" "Rick" "black" "Sean" "red" "Steve" "green"}))
+    (story/assert (deal))
+    (story/assert (turn-order))
+    (story/assert (era \A)))) ;yield era to story?
