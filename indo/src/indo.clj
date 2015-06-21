@@ -737,10 +737,12 @@
     (seat players false)))
 
 (defrecord Deal [hands]
-  story/Statement
-  (story/refute [this game]
+  story/Realize
+  (story/realize [this game]
     (when (nil? hands)
-      #(->Deal (deal-hands (get-in % [:components :city-cards])))))
+      (->Deal (deal-hands (get-in game [:components :city-cards])))))
+  story/Statement
+  (story/refute [this game])
   (story/fold [_ game]
     (let [players (:players game)
           f (if (= (count players) 2)
@@ -756,10 +758,12 @@
     (deal nil)))
 
 (defrecord TurnOrder [players]
-  story/Statement
-  (story/refute [this game]
+  story/Realize
+  (story/realize [this game]
     (when (nil? players)
-      #(->TurnOrder (vec (shuffle (keys (:players %)))))))
+      (->TurnOrder (vec (shuffle (keys (:players game)))))))
+  story/Statement
+  (story/refute [this game])
   (story/fold [_ game]
     (assoc game :turn-order players)))
 (defn turn-order
@@ -780,16 +784,13 @@
 
 (defrecord Game [components players open-money phase turn-order era available-deeds statements]
   story/Story
-  (story/assert [this statement]
-    (let [refutation (story/refute statement this)]
-      (cond
-        (clojure.test/function? refutation)
-          (story/assert this (refutation this))
-        (string? refutation)
-          (throw (Exception. refutation))
-        :else
-          (-> (story/fold statement this)
-            (update-in [:statements] conj statement)))))
+  (story/assert [this s]
+    (let [statement (story/expand s this)
+          error     (story/refute statement this)]
+      (if (string? error)
+        (throw (Exception. error))
+        (-> (story/fold statement this)
+          (update-in [:statements] conj statement)))))
   (story/consequent [_]
     (when (turn-order? (last statements))
       (->Era \A))))

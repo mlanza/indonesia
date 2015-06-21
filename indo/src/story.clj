@@ -9,8 +9,10 @@
   (refute [this story]) ;any objections? silence indicates none
   (fold [this story]))
 
-(defn add [story statement]
-  (assert story
-    (if (clojure.test/function? statement)
-      (statement story) ;yield to some indeterminate outcome
-      statement)))
+(defprotocol Realize
+  (realize [this story]))
+
+(defn expand [this story]
+  (if (satisfies? Realize this)
+    (or (realize this story) this)
+    this))
