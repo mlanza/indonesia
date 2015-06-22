@@ -737,8 +737,8 @@
     (seat players false)))
 
 (defrecord Deal [hands]
-  story/Realize
-  (story/realize [this game]
+  story/Chance
+  (story/resolve [this game]
     (when (nil? hands)
       (->Deal (deal-hands (get-in game [:components :city-cards])))))
   story/Statement
@@ -758,8 +758,8 @@
     (deal nil)))
 
 (defrecord TurnOrder [players]
-  story/Realize
-  (story/realize [this game]
+  story/Chance
+  (story/resolve [this game]
     (when (nil? players)
       (->TurnOrder (vec (shuffle (keys (:players game)))))))
   story/Statement
@@ -785,7 +785,7 @@
 (defrecord Game [components players open-money phase turn-order era available-deeds statements]
   story/Story
   (story/assert [this s]
-    (let [statement (story/expand s this)
+    (let [statement (story/ordain s this)
           error     (story/refute statement this)]
       (if (string? error)
         (throw (Exception. error))

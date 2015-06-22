@@ -1,5 +1,5 @@
 (ns story
-  (:refer-clojure :exclude [assert]))
+  (:refer-clojure :exclude [assert resolve]))
 
 (defprotocol Story
   (assert [this statement])
@@ -9,10 +9,10 @@
   (refute [this story]) ;any objections? silence indicates none
   (fold [this story]))
 
-(defprotocol Realize
-  (realize [this story]))
+(defprotocol Chance
+  (resolve [this story]))
 
-(defn expand [this story]
-  (if (satisfies? Realize this)
-    (or (realize this story) this)
+(defn ordain [this story]
+  (if (satisfies? Chance this)
+    (or (resolve this story) this)
     this))
